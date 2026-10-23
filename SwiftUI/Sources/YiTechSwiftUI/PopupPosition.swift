@@ -262,6 +262,7 @@ public struct PopupItemModifier<Item: Identifiable, PopupContent: View>: ViewMod
 public extension View {
     /// `transition` would be replaced by default edge movement transition if it's nil
     /// `barrierTransition` simply keep `fade` style is OK
+    /// `onDismiss` only works when popup is dismissed internally 
     func popup<C: View>(
         isPresented: Binding<Bool>,
         alignment: Alignment = .center,
