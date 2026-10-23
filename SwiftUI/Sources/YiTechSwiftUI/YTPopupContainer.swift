@@ -1,5 +1,5 @@
 //
-//  PopupPosition.swift
+//  YTPopupContainer.swift
 //  YiTechUI
 //
 //  Created by Sooyo on 2026/10/16.
@@ -10,14 +10,14 @@ import SwiftUI
 
 // MARK: - Data
 
-public struct PopupTransition {
-    public struct PopupEffect {
+public struct YTPopupTransition {
+    public struct YTPopupEffect {
         public let transition: AnyTransition
         public let animation: Animation
     }
 
-    public let insertion: PopupEffect
-    public let removal: PopupEffect
+    public let insertion: YTPopupEffect
+    public let removal: YTPopupEffect
 
     // MARK: - Transition Shortcuts
 
@@ -79,7 +79,7 @@ public struct PopupTransition {
     }
 }
 
-public extension PopupTransition {
+public extension YTPopupTransition {
     static func slide(by alignment: Alignment) -> Self {
         switch alignment {
         case .leading:
@@ -98,17 +98,17 @@ public extension PopupTransition {
 
 // MARK: - Bool Modifier
 
-public struct PopupContainerModifier<PopupContent: View>: ViewModifier {
+public struct YTPopupContainerModifier<PopupContent: View>: ViewModifier {
     /// This modifier is driven by a Boolean
     @Binding var isPresented: Bool
 
     let alignment: Alignment
-    let transition: PopupTransition
+    let transition: YTPopupTransition
 
     let blurRadius: CGFloat
     let barrierColor: Color
     let barrierDismissible: Bool
-    let barrierTransition: PopupTransition
+    let barrierTransition: YTPopupTransition
 
     let padding: EdgeInsets
     let onDismiss: (() -> Void)?
@@ -183,12 +183,12 @@ public struct PopupItemModifier<Item: Identifiable, PopupContent: View>: ViewMod
     @Binding var item: Item?
 
     let alignment: Alignment
-    let transition: PopupTransition
+    let transition: YTPopupTransition
 
     let blurRadius: CGFloat
     let barrierColor: Color
     let barrierDismissible: Bool
-    let barrierTransition: PopupTransition
+    let barrierTransition: YTPopupTransition
 
     let padding: EdgeInsets
     let onDismiss: (() -> Void)?
@@ -262,21 +262,21 @@ public struct PopupItemModifier<Item: Identifiable, PopupContent: View>: ViewMod
 public extension View {
     /// `transition` would be replaced by default edge movement transition if it's nil
     /// `barrierTransition` simply keep `fade` style is OK
-    /// `onDismiss` only works when popup is dismissed internally 
-    func popup<C: View>(
+    /// `onDismiss` only works when popup is dismissed internally
+    func popupYT<C: View>(
         isPresented: Binding<Bool>,
         alignment: Alignment = .center,
-        transition: PopupTransition? = nil,
+        transition: YTPopupTransition? = nil,
         blurRadius: CGFloat = 0,
         barrierColor: Color = .white.opacity(0.3),
         barrierDismissible: Bool = true,
-        barrierTransition: PopupTransition = .fade,
+        barrierTransition: YTPopupTransition = .fade,
         padding: EdgeInsets = EdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24),
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> C
     ) -> some View {
         modifier(
-            PopupContainerModifier(
+            YTPopupContainerModifier(
                 isPresented: isPresented,
                 alignment: alignment,
                 transition: transition ?? .slide(by: alignment),
@@ -291,15 +291,15 @@ public extension View {
         )
     }
 
-    func popup<Item: Identifiable, C: View>(
+    func popupYT<Item: Identifiable, C: View>(
         item: Binding<Item?>,
         alignment: Alignment = .center,
-        transition: PopupTransition? = nil,
+        transition: YTPopupTransition? = nil,
 
         blurRadius: CGFloat = 0,
         barrierColor: Color = .white.opacity(0.3),
         barrierDismissible: Bool = true,
-        barrierTransition: PopupTransition = .fade,
+        barrierTransition: YTPopupTransition = .fade,
 
         padding: EdgeInsets = EdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24),
         onDismiss: (() -> Void)? = nil,
@@ -351,7 +351,7 @@ struct DemoView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle("Popup Demo")
         }
-        .popup(
+        .popupYT(
             isPresented: $showCenter,
             alignment: .center,
             blurRadius: 4
@@ -367,7 +367,7 @@ struct DemoView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
             .shadow(radius: 20)
         }
-        .popup(
+        .popupYT(
             isPresented: $showBottom,
             alignment: .bottom,
             blurRadius: 6,
@@ -388,7 +388,7 @@ struct DemoView: View {
                         in: RoundedRectangle(cornerRadius: 20))
             .shadow(radius: 20)
         }
-        .popup(
+        .popupYT(
             isPresented: $showTop,
             alignment: .top,
             blurRadius: 4,
@@ -404,7 +404,7 @@ struct DemoView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             .shadow(radius: 10)
         }
-        .popup(item: $alertItem, alignment: .center, blurRadius: 4) { model in
+        .popupYT(item: $alertItem, alignment: .center, blurRadius: 4) { model in
             VStack(spacing: 16) {
                 Text(model.title).font(.headline)
                 Text("删除后不可恢复").foregroundStyle(.secondary)
