@@ -36,7 +36,7 @@ public struct YTLike: View {
     public init(
         initialCount: Int = 1_300,
         size: CGFloat = 44,
-        strokeWidth: CGFloat = 2.3,
+        strokeWidth: CGFloat = 1.6,
         strokeColor: Color = .primary,
         likedStrokeColor: Color? = nil,
         fillColor: Color = Color(red: 229 / 255, green: 72 / 255, blue: 77 / 255),
@@ -86,31 +86,19 @@ public struct YTLike: View {
     public var body: some View {
         Button(action: handlePress) {
             HStack(spacing: 7) {
-                ZStack {
-                    YTHeartShape()
-                        .fill(isLiked ? fillColor : .clear)
-                        .overlay {
-                            YTHeartShape()
-                                .stroke(
-                                    isLiked ? likedStrokeColor : strokeColor,
-                                    style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)
-                                )
+                heart
+                    .frame(width: size, height: size)
+                    .overlay {
+                        if animationProgress < 1, animationTargetLiked {
+                            YTLikeBurst(
+                                effect: effect,
+                                progress: animationProgress,
+                                amount: burst / 100,
+                                size: size,
+                                colors: Self.confettiColors
+                            )
                         }
-//                        .scaleEffect(x: 1.2, y: 1.2)
-                        .rotationEffect(heartRotation)
-                        .offset(y: -size * 0.04)
-
-                    if animationProgress < 1 && animationTargetLiked {
-                        YTLikeBurst(
-                            effect: effect,
-                            progress: animationProgress,
-                            amount: burst / 100,
-                            size: size,
-                            colors: Self.confettiColors
-                        )
                     }
-                }
-                .frame(width: size, height: size)
 
                 if showsCount {
                     countLabel
@@ -132,6 +120,21 @@ public struct YTLike: View {
         initialCount + (isLiked ? 1 : 0)
     }
 
+    private var heart: some View {
+        YTHeartShape()
+            .fill(isLiked ? fillColor : .clear)
+            .overlay {
+                YTHeartShape()
+                    .stroke(
+                        isLiked ? likedStrokeColor : strokeColor,
+                        style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)
+                    )
+            }
+            .scaleEffect(x: heartScaleX, y: heartScaleY)
+            .rotationEffect(heartRotation)
+            .offset(y: -size * 0.04)
+    }
+
     @ViewBuilder
     private var countLabel: some View {
         if #available(iOS 17, macOS 14, tvOS 17, watchOS 10, *) {
@@ -144,38 +147,134 @@ public struct YTLike: View {
         }
     }
 
-    private var heartScale: CGFloat {
-        guard animationProgress < 1 else { return 1 }
-        let pulse = sin(animationProgress * .pi)
-        let jelly = sin(animationProgress * 4.5 * .pi) * pow(1 - animationProgress, 1.6)
-        let base = animationTargetLiked ? 1 + 0.045 * pulse : 1 + 0.025 * pulse
-        return base + 0.016 * jelly
+    /// Separates horizontal and vertical scale so pulse becomes visible jelly motion
+    private var heartScaleX: CGFloat {
+        guard animationProgress < 1 else {
+            return 1
+        }
+
+        if animationTargetLiked {
+            return 1 + likePunchScale + likeStretch
+        }
+
+        let pulse = CGFloat(sin(animationProgress * .pi))
+        let jelly = CGFloat(sin(animationProgress * 4.5 * .pi) * pow(1 - animationProgress, 1.6))
+
+        return 1 + 0.035 * pulse + 0.065 * jelly
+    }
+
+    private var heartScaleY: CGFloat {
+        guard animationProgress < 1 else {
+            return 1
+        }
+
+        if animationTargetLiked {
+            return 1 + likePunchScale - likeStretch * 0.85
+        }
+
+        let pulse = CGFloat(sin(animationProgress * .pi))
+        let jelly = CGFloat(sin(animationProgress * 4.5 * .pi) * pow(1 - animationProgress, 1.6))
+
+        return 1 + 0.055 * pulse - 0.085 * jelly
+    }
+
+    /// Like animation uses a short punch instead of a soft sinusoidal pulse
+    private var likePunchScale: CGFloat {
+        let progress = likeAnimationProgress
+        if progress < 0.20 {
+            let local = progress / 0.20
+            return 0.30 * CGFloat(1 - pow(1 - local, 3))
+        }
+
+        if progress < 0.34 {
+            let local = (progress - 0.20) / 0.14
+            return 0.30 - 0.34 * CGFloat(local)
+        }
+
+        if progress < 0.46 {
+            let local = (progress - 0.34) / 0.12
+            return -0.04 + 0.04 * CGFloat(local)
+        }
+
+        return 0
+    }
+
+    private var likeStretch: CGFloat {
+        let progress = likeAnimationProgress
+        if progress < 0.20 {
+            let local = progress / 0.20
+            return 0.05 * CGFloat(sin(local * .pi))
+        }
+
+        if progress < 0.34 {
+            let local = (progress - 0.20) / 0.14
+            return -0.03 * CGFloat(sin(local * .pi))
+        }
+
+        return 0
     }
 
     private var heartRotation: Angle {
-        guard animationProgress < 1 else { return .zero }
+        guard animationProgress < 1 else {
+            return .zero
+        }
+        
+        if animationTargetLiked {
+            let progress = likeAnimationProgress
+            if progress < 0.20 {
+                let local = progress / 0.20
+                return .degrees(2.8 * sin(local * .pi))
+            }
+
+            if progress < 0.34 {
+                let local = (progress - 0.20) / 0.14
+                return .degrees(-2.8 * sin(local * .pi))
+            }
+
+            return .zero
+        }
+
         let jelly = sin(animationProgress * 4.5 * .pi) * pow(1 - animationProgress, 1.6)
         return .degrees(jelly * 1.4)
     }
 
+    /// Waits until bloom ring is nearly hollow before revealing heart motion
+    private var likeAnimationProgress: Double {
+        let start = Self.likeAnimationStartProgress
+        guard animationProgress > start else {
+            return 0
+        }
+
+        return min(1, (animationProgress - start) / (1 - start))
+    }
+
     private func handlePress() {
-        guard shouldStart() else { return }
+        guard shouldStart() else {
+            return
+        }
 
         animationTask?.cancel()
+        
         let currentTarget = animationProgress < 1 && animationProgress < Self.revealProgress
             ? animationTargetLiked
             : isLiked
+        
         let targetLiked = !currentTarget
         animationTargetLiked = targetLiked
+        
         if !targetLiked {
             isLiked = false
         }
+        
         animationID += 1
+        
         let currentAnimationID = animationID
         animationProgress = 0
+        
         if duration == 0 {
             isLiked = targetLiked
         }
+        
         onAnimationPhaseChange(.started)
         startAnimation(id: currentAnimationID)
     }
@@ -184,7 +283,10 @@ public struct YTLike: View {
         let animationDuration = duration
         animationTask = Task { @MainActor in
             guard animationDuration > 0 else {
-                guard id == animationID else { return }
+                guard id == animationID else {
+                    return
+                }
+
                 animationProgress = 1
                 onAnimationPhaseChange(.progress(100))
                 onAnimationPhaseChange(.ended)
@@ -193,16 +295,24 @@ public struct YTLike: View {
 
             let start = Date()
             var didRevealHeart = false
+
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 16_000_000)
-                guard !Task.isCancelled, id == animationID else { return }
+                guard !Task.isCancelled, id == animationID else {
+                    return
+                }
+
                 let progress = min(1, Date().timeIntervalSince(start) / animationDuration)
+
                 animationProgress = progress
+
                 if !didRevealHeart && progress >= Self.revealProgress {
                     isLiked = animationTargetLiked
                     didRevealHeart = true
                 }
+
                 onAnimationPhaseChange(.progress(progress * 100))
+
                 if progress >= 1 {
                     isLiked = animationTargetLiked
                     onAnimationPhaseChange(.ended)
@@ -213,6 +323,8 @@ public struct YTLike: View {
     }
 
     fileprivate static let revealProgress = 0.42
+    fileprivate static let likeAnimationStartProgress = 0.44
+    fileprivate static let particleStartProgress = 0.50
 }
 
 private struct YTHeartShape: Shape {
@@ -268,15 +380,20 @@ private struct YTLikeBurst: View {
     var body: some View {
         ZStack {
             if effect == .bloom {
-                bloomLayer
+                bloomRing
 
-                if progress >= 0.8 {
-                    let particleProgress = min(1, (progress - 0.8) / 0.2)
+                if progress >= YTLike.particleStartProgress {
+                    let particleProgress = min(
+                        1,
+                        (progress - YTLike.particleStartProgress)
+                            / (1 - YTLike.particleStartProgress)
+                    )
                     ForEach(0..<7, id: \.self) { index in
                         let angle = Double(index) * (360 / 7) - 90
                         YTParticlePair(
                             angle: angle,
-                            distance: size * 0.92 + 2 + particleProgress * (10 + 12 * amount),
+                            distance: size * 0.70 + 1,
+                            travelDistance: 8 + 10 * amount,
                             progress: particleProgress,
                             firstColor: colors[index % colors.count],
                             secondColor: colors[(index + 3) % colors.count]
@@ -301,66 +418,139 @@ private struct YTLikeBurst: View {
         .allowsHitTesting(false)
     }
 
-    @ViewBuilder
-    private var bloomLayer: some View {
-        let maxProgress = 0.62
-        let outerRadius = size * 0.92
-        let expansion = min(1, progress / maxProgress)
-        let radius = size * 0.07 + (outerRadius - size * 0.07) * expansion
-        let ringStart = YTLike.revealProgress
-        let holeProgress = progress < ringStart
-            ? 0
-            : min(1, (progress - ringStart) / (maxProgress - ringStart))
-        let innerRadius = radius * 0.92 * holeProgress
+    /// Bloom ring follows staged scale, border, color, and opacity timing
+    private var bloomRing: some View {
+        let radius = size * 0.92
+        let p = progress
+        let fillEnd = 0.30
 
-        YTBloomRing(outerRadius: radius, innerRadius: innerRadius)
-            .fill(.purple, style: FillStyle(eoFill: true))
-            .opacity(progress < 0.82 ? 1 : 1 - (progress - 0.82) / 0.18)
+        let scale: CGFloat
+        if p < fillEnd {
+            let local = p / fillEnd
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            scale = CGFloat(0.15 + 0.85 * eased)
+        } else {
+            let local = (p - fillEnd) / (1 - fillEnd)
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            scale = CGFloat(1 + 0.12 * eased)
+        }
+
+        let borderWidth: CGFloat
+        if p < fillEnd {
+            borderWidth = radius
+        } else if p < 0.75 {
+            let local = (p - fillEnd) / (0.75 - fillEnd)
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            borderWidth = radius - (radius - radius * 2 / 17) * CGFloat(eased)
+        } else {
+            let local = (p - 0.75) / 0.25
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            borderWidth = radius * 2 / 17 * CGFloat(1 - eased)
+        }
+
+        let color: Color
+        if p < fillEnd {
+            let local = p / fillEnd
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            color = Self.bloomColor(eased)
+        } else {
+            color = Self.bloomPurple
+        }
+
+        let opacity: Double
+        if p < 0.75 {
+            opacity = 1
+        } else {
+            let local = (p - 0.75) / 0.25
+            let eased = BezierEasing.value(local, 0.25, 0.8, 0.35, 1)
+            opacity = 1 - eased
+        }
+
+        return Circle()
+            .strokeBorder(color, lineWidth: borderWidth)
+            .frame(width: radius * 2, height: radius * 2)
+            .scaleEffect(scale)
+            .opacity(opacity)
+    }
+
+    private static let bloomPurple = Color(red: 204 / 255, green: 142 / 255, blue: 245 / 255)
+
+    private static func bloomColor(_ progress: Double) -> Color {
+        let t = min(1, max(0, progress))
+        let red = 229 + (204 - 229) * t
+        let green = 72 + (142 - 72) * t
+        let blue = 77 + (245 - 77) * t
+
+        return Color(red: red / 255, green: green / 255, blue: blue / 255)
     }
 }
 
-private struct YTBloomRing: Shape {
-    let outerRadius: CGFloat
-    let innerRadius: CGFloat
+private enum BezierEasing {
+    static func value(
+        _ progress: Double,
+        _ x1: Double,
+        _ y1: Double,
+        _ x2: Double,
+        _ y2: Double
+    ) -> Double {
+        let x = min(1, max(0, progress))
+        var t = x
 
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        path.addEllipse(in: CGRect(
-            x: center.x - outerRadius,
-            y: center.y - outerRadius,
-            width: outerRadius * 2,
-            height: outerRadius * 2
-        ))
-        if innerRadius > 0 {
-            path.addEllipse(in: CGRect(
-                x: center.x - innerRadius,
-                y: center.y - innerRadius,
-                width: innerRadius * 2,
-                height: innerRadius * 2
-            ))
+        // Newton-Raphson solves cubic x(t), then cubic y(t) gives eased progress
+        for _ in 0..<8 {
+            let currentX = cubic(t, 0, x1, x2, 1)
+            let derivative = cubicDerivative(t, 0, x1, x2, 1)
+            guard abs(derivative) > 0.0001 else { break }
+            t = min(1, max(0, t - (currentX - x) / derivative))
         }
-        return path
+
+        return cubic(t, 0, y1, y2, 1)
+    }
+
+    private static func cubic(_ t: Double, _ p0: Double, _ p1: Double, _ p2: Double, _ p3: Double) -> Double {
+        let inverse = 1 - t
+        return inverse * inverse * inverse * p0
+            + 3 * inverse * inverse * t * p1
+            + 3 * inverse * t * t * p2
+            + t * t * t * p3
+    }
+
+    private static func cubicDerivative(_ t: Double, _ p0: Double, _ p1: Double, _ p2: Double, _ p3: Double) -> Double {
+        let inverse = 1 - t
+        return 3 * inverse * inverse * (p1 - p0)
+            + 6 * inverse * t * (p2 - p1)
+            + 3 * t * t * (p3 - p2)
     }
 }
 
 private struct YTParticlePair: View {
     let angle: Double
     let distance: CGFloat
+    let travelDistance: CGFloat
     let progress: Double
     let firstColor: Color
     let secondColor: Color
 
     var body: some View {
+        let movement = CGFloat(BezierEasing.value(progress, 0.15, 0.75, 0.25, 1))
+        let currentDistance = distance + travelDistance * movement
+        let gravity = CGFloat(progress * progress * 6)
+
         ZStack {
             Circle()
                 .fill(firstColor)
                 .frame(width: 4, height: 4)
-                .offset(x: cos(angle * .pi / 180) * distance, y: sin(angle * .pi / 180) * distance)
+                .offset(
+                    x: cos(angle * .pi / 180) * currentDistance,
+                    y: sin(angle * .pi / 180) * currentDistance + gravity
+                )
             Circle()
                 .fill(secondColor)
                 .frame(width: 3, height: 3)
-                .offset(x: cos(angle * .pi / 180) * distance * 1.18, y: sin(angle * .pi / 180) * distance * 1.18)
+                .offset(
+                    x: cos(angle * .pi / 180) * currentDistance * 1.12,
+                    y: sin(angle * .pi / 180) * currentDistance * 1.12 + gravity
+                )
         }
         .opacity(1 - progress)
     }
@@ -386,7 +576,7 @@ private struct YTParticlePair: View {
         .padding()
 
         YTLike(
-            size: 24,
+            size: 20,
             duration: 1,
             effect: .bloom,
             showsCount: true
