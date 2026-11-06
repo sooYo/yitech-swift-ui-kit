@@ -20,11 +20,12 @@ import YiTechSwiftUI
 
 ## Components
 
-`YTLike` is a native SwiftUI like button with a count, heart fill and stroke styling, bloom or firework particles, configurable animation timing, and animation progress callbacks:
+`YTLike` is a native SwiftUI like button with a count, heart, star, or thumbs-up shape, fill and stroke styling, bloom or firework particles, configurable animation timing, and animation progress callbacks:
 
 ```swift
 YTLike(
     initialCount: 1_300,
+    shape: .star, // .heart by default; .thumbsUp also available
     strokeWidth: 2.3,
     fillColor: Color(red: 229 / 255, green: 72 / 255, blue: 77 / 255),
     duration: 0.42,

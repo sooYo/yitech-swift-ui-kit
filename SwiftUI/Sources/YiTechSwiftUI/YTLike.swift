@@ -8,8 +8,14 @@
 import Foundation
 import SwiftUI
 
-/// Animated like control with configurable heart styling, particle effect, and progress callbacks
+/// Animated like control with configurable icon styling, particle effect, and progress callbacks
 public struct YTLike: View {
+    public enum Shape: String, CaseIterable, Sendable {
+        case heart
+        case star
+        case thumbsUp
+    }
+
     public enum Effect: String, CaseIterable, Sendable {
         case bloom
         case firework
@@ -36,6 +42,7 @@ public struct YTLike: View {
     public init(
         initialCount: Int = 1_300,
         size: CGFloat = 44,
+        shape: Shape = .heart,
         strokeWidth: CGFloat = 1.6,
         strokeColor: Color = .primary,
         likedStrokeColor: Color? = nil,
@@ -49,6 +56,7 @@ public struct YTLike: View {
     ) {
         self.initialCount = max(0, initialCount)
         self.size = max(1, size)
+        self.shape = shape
         self.strokeWidth = max(0, strokeWidth)
         self.strokeColor = strokeColor
         self.likedStrokeColor = likedStrokeColor ?? YTLike.defaultRed
@@ -63,6 +71,7 @@ public struct YTLike: View {
 
     private let initialCount: Int
     private let size: CGFloat
+    private let shape: Shape
     private let strokeWidth: CGFloat
     private let strokeColor: Color
     private let likedStrokeColor: Color
@@ -75,9 +84,9 @@ public struct YTLike: View {
     private let onAnimationPhaseChange: (AnimationPhase) -> Void
 
     @State private var isLiked = false
-    /// Progress drives bloom, particle timing, and the heart's damped jelly motion
+    /// Progress drives bloom, particle timing, and the icon's damped jelly motion
     @State private var animationProgress = 1.0
-    /// Target state stays separate until bloom starts revealing the heart
+    /// Target state stays separate until bloom starts revealing the icon
     @State private var animationTargetLiked = false
     // Invalidates an older task when user taps again before animation ends
     @State private var animationID = 0
@@ -86,7 +95,7 @@ public struct YTLike: View {
     public var body: some View {
         Button(action: handlePress) {
             HStack(spacing: 7) {
-                heart
+                icon
                     .frame(width: size, height: size)
                     .overlay {
                         if animationProgress < 1, animationTargetLiked {
@@ -120,19 +129,19 @@ public struct YTLike: View {
         initialCount + (isLiked ? 1 : 0)
     }
 
-    private var heart: some View {
-        YTHeartShape()
+    private var icon: some View {
+        YTLikeIconShape(shape: shape)
             .fill(isLiked ? fillColor : .clear)
             .overlay {
-                YTHeartShape()
+                YTLikeIconShape(shape: shape)
                     .stroke(
                         isLiked ? likedStrokeColor : strokeColor,
                         style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)
                     )
             }
-            .scaleEffect(x: heartScaleX, y: heartScaleY)
-            .rotationEffect(heartRotation)
-            .offset(y: -size * 0.04)
+            .scaleEffect(x: iconScaleX, y: iconScaleY)
+            .rotationEffect(iconRotation)
+            .offset(y: shape == .heart ? -size * 0.04 : 0)
     }
 
     @ViewBuilder
@@ -148,7 +157,7 @@ public struct YTLike: View {
     }
 
     /// Separates horizontal and vertical scale so pulse becomes visible jelly motion
-    private var heartScaleX: CGFloat {
+    private var iconScaleX: CGFloat {
         guard animationProgress < 1 else {
             return 1
         }
@@ -163,7 +172,7 @@ public struct YTLike: View {
         return 1 + 0.035 * pulse + 0.065 * jelly
     }
 
-    private var heartScaleY: CGFloat {
+    private var iconScaleY: CGFloat {
         guard animationProgress < 1 else {
             return 1
         }
@@ -214,11 +223,11 @@ public struct YTLike: View {
         return 0
     }
 
-    private var heartRotation: Angle {
+    private var iconRotation: Angle {
         guard animationProgress < 1 else {
             return .zero
         }
-        
+
         if animationTargetLiked {
             let progress = likeAnimationProgress
             if progress < 0.20 {
@@ -238,7 +247,7 @@ public struct YTLike: View {
         return .degrees(jelly * 1.4)
     }
 
-    /// Waits until bloom ring is nearly hollow before revealing heart motion
+    /// Waits until bloom ring is nearly hollow before revealing icon motion
     private var likeAnimationProgress: Double {
         let start = Self.likeAnimationStartProgress
         guard animationProgress > start else {
@@ -254,27 +263,27 @@ public struct YTLike: View {
         }
 
         animationTask?.cancel()
-        
+
         let currentTarget = animationProgress < 1 && animationProgress < Self.revealProgress
             ? animationTargetLiked
             : isLiked
-        
+
         let targetLiked = !currentTarget
         animationTargetLiked = targetLiked
-        
+
         if !targetLiked {
             isLiked = false
         }
-        
+
         animationID += 1
-        
+
         let currentAnimationID = animationID
         animationProgress = 0
-        
+
         if duration == 0 {
             isLiked = targetLiked
         }
-        
+
         onAnimationPhaseChange(.started)
         startAnimation(id: currentAnimationID)
     }
@@ -294,7 +303,7 @@ public struct YTLike: View {
             }
 
             let start = Date()
-            var didRevealHeart = false
+            var didRevealIcon = false
 
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 16_000_000)
@@ -306,9 +315,9 @@ public struct YTLike: View {
 
                 animationProgress = progress
 
-                if !didRevealHeart && progress >= Self.revealProgress {
+                if !didRevealIcon && progress >= Self.revealProgress {
                     isLiked = animationTargetLiked
-                    didRevealHeart = true
+                    didRevealIcon = true
                 }
 
                 onAnimationPhaseChange(.progress(progress * 100))
@@ -325,6 +334,21 @@ public struct YTLike: View {
     fileprivate static let revealProgress = 0.42
     fileprivate static let likeAnimationStartProgress = 0.44
     fileprivate static let particleStartProgress = 0.50
+}
+
+private struct YTLikeIconShape: SwiftUI.Shape {
+    let shape: YTLike.Shape
+
+    func path(in rect: CGRect) -> Path {
+        switch shape {
+        case .heart:
+            YTHeartShape().path(in: rect)
+        case .star:
+            YTStarShape().path(in: rect)
+        case .thumbsUp:
+            YTThumbsUpShape().path(in: rect)
+        }
+    }
 }
 
 private struct YTHeartShape: Shape {
@@ -370,6 +394,162 @@ private struct YTHeartShape: Shape {
     }
 }
 
+private struct YTStarShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let outerRadius = min(rect.width, rect.height) * 0.46
+        let innerRadius = outerRadius * 0.42
+        let vertices = (0..<10).map { point in
+            let angle = CGFloat(point) * .pi / 5 - .pi / 2
+            let radius = point.isMultiple(of: 2) ? outerRadius : innerRadius
+            
+            return CGPoint(
+                x: center.x + cos(angle) * radius,
+                y: center.y + sin(angle) * radius
+            )
+        }
+
+        func insetPoint(from vertex: CGPoint, toward neighbor: CGPoint, distance: CGFloat) -> CGPoint {
+            let dx = neighbor.x - vertex.x
+            let dy = neighbor.y - vertex.y
+            let edgeLength = hypot(dx, dy)
+            
+            return CGPoint(
+                x: vertex.x + dx / edgeLength * distance,
+                y: vertex.y + dy / edgeLength * distance
+            )
+        }
+
+        var path = Path()
+        for index in vertices.indices {
+            let vertex = vertices[index]
+            let previous = vertices[(index + vertices.count - 1) % vertices.count]
+            let next = vertices[(index + 1) % vertices.count]
+            let cornerRatio = index.isMultiple(of: 2) ? 0.28 : 0.16
+            
+            let entry = insetPoint(
+                from: vertex,
+                toward: previous,
+                distance: hypot(previous.x - vertex.x, previous.y - vertex.y) * cornerRatio
+            )
+            
+            let exit = insetPoint(
+                from: vertex,
+                toward: next,
+                distance: hypot(next.x - vertex.x, next.y - vertex.y) * cornerRatio
+            )
+
+            if index == 0 {
+                path.move(to: entry)
+            } else {
+                path.addLine(to: entry)
+            }
+
+            path.addQuadCurve(to: exit, control: vertex)
+        }
+
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct YTThumbsUpShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: x, y: y)
+        }
+
+        var path = Path()
+        path.move(to: point(815.588007, 438.766843))
+        path.addCurve(
+            to: point(774.411287, 417.320635),
+            control1: point(805.582124, 426.032969),
+            control2: point(790.581030, 418.219899)
+        )
+        path.addLine(to: point(629.073721, 417.320635))
+        path.addCurve(
+            to: point(600.855026, 410.683598),
+            control1: point(614.490299, 417.320635),
+            control2: point(603.880070, 414.792240)
+        )
+        path.addCurve(
+            to: point(605.505467, 364.991887),
+            control1: point(599.274779, 408.471252),
+            control2: point(594.759788, 398.628572)
+        )
+        path.addCurve(
+            to: point(591.192945, 210.804938),
+            control1: point(619.908289, 319.480776),
+            control2: point(619.772839, 249.949912)
+        )
+        path.addCurve(
+            to: point(536.019753, 181.773545),
+            control1: point(577.286772, 191.841975),
+            control2: point(558.278659, 181.773545)
+        )
+        path.addCurve(
+            to: point(448.248325, 241.552028),
+            control1: point(477.008818, 181.773545),
+            control2: point(453.079365, 219.383422)
+        )
+        path.addCurve(
+            to: point(361.470194, 417.320635),
+            control1: point(428.608113, 408.155203),
+            control2: point(360.522046, 417.320635)
+        )
+        path.addLine(to: point(218.525573, 417.320635))
+        path.addCurve(
+            to: point(195.950617, 439.895591),
+            control1: point(206.057769, 417.320635),
+            control2: point(195.950617, 427.427787)
+        )
+        path.addLine(to: point(195.950617, 819.516049))
+        path.addCurve(
+            to: point(202.562669, 835.478953),
+            control1: point(195.950617, 825.503300),
+            control2: point(198.329043, 831.245328)
+        )
+        path.addCurve(
+            to: point(218.525573, 842.091005),
+            control1: point(206.796294, 839.712579),
+            control2: point(212.538322, 842.091005)
+        )
+        path.addLine(to: point(667.225397, 842.091005))
+        path.addCurve(
+            to: point(758.428219, 796.308995),
+            control1: point(749.804586, 842.091005),
+            control2: point(758.067020, 801.636684)
+        )
+        path.addCurve(
+            to: point(824.753439, 507.168959),
+            control1: point(758.428219, 796.308995),
+            control2: point(810.621517, 567.805291)
+        )
+        path.addCurve(
+            to: point(815.588007, 438.766843),
+            control1: point(831.345326, 478.363315),
+            control2: point(828.320282, 455.336860)
+        )
+        
+        path.closeSubpath()
+        path.move(to: point(339.843915, 417.320635))
+        path.addLine(to: point(339.843915, 842.091005))
+
+        let bounds = path.boundingRect
+        let scale = min(rect.width / bounds.width, rect.height / bounds.height) * 0.90
+        let transform = CGAffineTransform(
+            a: scale,
+            b: 0,
+            c: 0,
+            d: scale,
+            tx: rect.midX - bounds.midX * scale,
+            ty: rect.midY - bounds.midY * scale
+        )
+        
+        return path.applying(transform)
+    }
+}
+
 private struct YTLikeBurst: View {
     let effect: YTLike.Effect
     let progress: Double
@@ -401,7 +581,7 @@ private struct YTLikeBurst: View {
                     }
                 }
             } else {
-                // Stagger sparks around the heart and keep them visible until they spread out
+                // Stagger sparks around the icon and keep them visible until they spread out
                 ForEach(0..<16, id: \.self) { index in
                     let angle = -Double.pi / 2
                         + Double(index) * (2 * Double.pi / 16)
@@ -582,6 +762,22 @@ private struct YTParticlePair: View {
             size: 24,
             duration: duration,
             effect: .firework,
+            showsCount: false
+        )
+        .padding()
+
+        YTLike(
+            size: 24,
+            shape: .star,
+            duration: duration,
+            showsCount: false
+        )
+        .padding()
+
+        YTLike(
+            size: 24,
+            shape: .thumbsUp,
+            duration: duration,
             showsCount: false
         )
         .padding()
