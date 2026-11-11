@@ -8,12 +8,33 @@ import SwiftUI
 
 /// A compact page indicator with optional timed advancement and custom rendering.
 public struct YTPageIndicator<Indicator: View>: View {
-    /// Visual preset for ``PageIndicator``.
-    public enum Style: Equatable {
+    /// Timer-specific playback control configuration.
+    public struct TimerConfiguration {
+        fileprivate let playbackControl: ((Bool, @escaping () -> Void) -> AnyView)?
+        public let visible: Bool
+
+        public init(visible: Bool = true) {
+            self.visible = visible
+            playbackControl = nil
+        }
+
+        public init<Control: View>(
+            visible: Bool = true,
+            @ViewBuilder playbackControl: @escaping (Bool, @escaping () -> Void) -> Control
+        ) {
+            self.visible = visible
+            self.playbackControl = { isPlaying, toggle in
+                AnyView(playbackControl(isPlaying, toggle))
+            }
+        }
+    }
+
+    /// Visual preset and style-specific configuration.
+    public enum Style {
         case extended
         case dots
         case roundedRectangle
-        case timer
+        case timer(TimerConfiguration = TimerConfiguration())
     }
 
     /// Creates a preset indicator. Pass a binding to synchronize page changes with another view.
@@ -29,7 +50,6 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color? = nil,
         autoAdvance: Bool? = nil,
         interval: TimeInterval = 3,
-        showsPlaybackControl: Bool? = nil,
         onIndexChange: ((Int) -> Void)? = nil
     ) where Indicator == EmptyView {
         self.init(
@@ -44,7 +64,6 @@ public struct YTPageIndicator<Indicator: View>: View {
             inactiveColor: inactiveColor,
             autoAdvance: autoAdvance,
             interval: interval,
-            showsPlaybackControl: showsPlaybackControl,
             onIndexChange: onIndexChange,
             customIndicator: nil
         )
@@ -63,7 +82,6 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color? = nil,
         autoAdvance: Bool? = nil,
         interval: TimeInterval = 3,
-        showsPlaybackControl: Bool? = nil,
         onIndexChange: ((Int) -> Void)? = nil,
         @ViewBuilder indicatorBuilder: @escaping (Int, Double, Bool) -> Indicator
     ) {
@@ -79,7 +97,6 @@ public struct YTPageIndicator<Indicator: View>: View {
             inactiveColor: inactiveColor,
             autoAdvance: autoAdvance,
             interval: interval,
-            showsPlaybackControl: showsPlaybackControl,
             onIndexChange: onIndexChange,
             customIndicator: indicatorBuilder
         )
@@ -96,7 +113,6 @@ public struct YTPageIndicator<Indicator: View>: View {
     private let inactiveColor: Color?
     private let autoAdvance: Bool?
     private let interval: TimeInterval
-    private let showsPlaybackControl: Bool?
     private let onIndexChange: ((Int) -> Void)?
     private let indicatorBuilder: ((Int, Double, Bool) -> Indicator)?
 
@@ -109,24 +125,34 @@ public struct YTPageIndicator<Indicator: View>: View {
         guard count > 0 else {
             return 0
         }
-        
+
         return min(max(index?.wrappedValue ?? internalIndex, 0), count - 1)
     }
 
     private var usesAutoAdvance: Bool {
-        autoAdvance ?? (style == .timer)
+        autoAdvance ?? isTimerStyle
     }
 
     private var showsPlaybackButton: Bool {
-        showsPlaybackControl ?? (style == .timer)
+        timerConfiguration?.visible ?? false
+    }
+
+    private var isTimerStyle: Bool {
+        if case .timer = style { return true }
+        return false
+    }
+
+    private var timerConfiguration: TimerConfiguration? {
+        guard case let .timer(configuration) = style else { return nil }
+        return configuration
     }
 
     private var resolvedActiveColor: Color {
-        activeColor ?? (style == .timer ? .white : .accentColor)
+        activeColor ?? (isTimerStyle ? .white : .accentColor)
     }
 
     private var resolvedInactiveColor: Color {
-        inactiveColor ?? (style == .timer ? .white.opacity(0.28) : .secondary.opacity(0.35))
+        inactiveColor ?? (isTimerStyle ? .white.opacity(0.28) : .secondary.opacity(0.35))
     }
 
     private init(
@@ -141,7 +167,6 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color?,
         autoAdvance: Bool?,
         interval: TimeInterval,
-        showsPlaybackControl: Bool?,
         onIndexChange: ((Int) -> Void)?,
         customIndicator: ((Int, Double, Bool) -> Indicator)?
     ) {
@@ -156,16 +181,15 @@ public struct YTPageIndicator<Indicator: View>: View {
         self.inactiveColor = inactiveColor
         self.autoAdvance = autoAdvance
         self.interval = max(0.1, interval)
-        self.showsPlaybackControl = showsPlaybackControl
         self.onIndexChange = onIndexChange
-        self.indicatorBuilder = customIndicator
+        indicatorBuilder = customIndicator
     }
 
     public var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !shouldTick)) { context in
             let progress = progress(at: context.date)
 
-            HStack(spacing: style == .timer ? 12 : spacing) {
+            HStack(spacing: isTimerStyle ? 12 : spacing) {
                 HStack(spacing: spacing) {
                     ForEach(0 ..< count, id: \.self) { itemIndex in
                         Button {
@@ -179,15 +203,19 @@ public struct YTPageIndicator<Indicator: View>: View {
                 }
 
                 if showsPlaybackButton {
-                    Button(action: togglePlayback) {
-                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(resolvedActiveColor)
-                            .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.08), in: Circle())
+                    if let customControl = timerConfiguration?.playbackControl {
+                        customControl(isPlaying, togglePlayback)
+                    } else {
+                        Button(action: togglePlayback) {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(resolvedActiveColor)
+                                .frame(width: 44, height: 44)
+                                .background(.white.opacity(0.08), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isPlaying ? "Pause page playback" : "Resume page playback")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(isPlaying ? "Pause page playback" : "Resume page playback")
                 }
             }
             .task(id: progress >= 1) {
@@ -221,7 +249,7 @@ public struct YTPageIndicator<Indicator: View>: View {
             indicatorBuilder(itemIndex, itemProgress, active)
                 .accessibilityLabel("Page \(itemIndex + 1) of \(count)")
                 .accessibilityAddTraits(active ? .isSelected : [])
-        } else if style == .timer {
+        } else if isTimerStyle {
             timerIndicator(at: itemIndex, active: active, progress: itemProgress)
         } else {
             presetIndicator(at: itemIndex)
@@ -278,7 +306,7 @@ public struct YTPageIndicator<Indicator: View>: View {
         guard newIndex != currentIndex else {
             return
         }
-        
+
         setIndex(newIndex)
         resetTimer()
     }
@@ -287,7 +315,7 @@ public struct YTPageIndicator<Indicator: View>: View {
         guard count > 1 else {
             return
         }
-        
+
         setIndex((currentIndex + 1) % count)
         resetTimer()
     }
@@ -332,7 +360,24 @@ public struct YTPageIndicator<Indicator: View>: View {
         YTPageIndicator(count: 5, style: .extended, autoAdvance: true)
         YTPageIndicator(count: 5, style: .dots)
         YTPageIndicator(count: 5, style: .roundedRectangle, size: CGSize(width: 18, height: 6))
-        YTPageIndicator(count: 5, style: .timer, interval: 4)
+        YTPageIndicator(count: 5, style: .timer(), interval: 4)
+        YTPageIndicator(
+            count: 5,
+            style: .timer(.init(visible: false)),
+            interval: 4
+        )
+        YTPageIndicator(
+            count: 5,
+            style: .timer(.init { isPlaying, toggle in
+                Button(action: toggle) {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 36, height: 36)
+                        .background(.white.opacity(0.1), in: Circle())
+                }
+                .buttonStyle(.plain)
+            }),
+            interval: 4
+        )
     }
     .padding(24)
     .background(Color.black)
