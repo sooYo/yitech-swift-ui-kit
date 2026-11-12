@@ -76,6 +76,46 @@ YTCategoryView(
 }
 ```
 
+`YTPageIndicator` supports manual page selection and automatic playback. Set `interactionToken` when an interaction occurs outside the indicator; each token change pauses playback and resets the delay. Playback resumes after `interactionPauseDuration` seconds, which defaults to 60 seconds:
+
+```swift
+struct Pager: View {
+    @State private var index = 0
+    @State private var interactionToken = 0
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            TabView(selection: $index) {
+                ForEach(0 ..< 5, id: \.self) { page in
+                    Text("Page \(page + 1)")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .tag(page)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            YTPageIndicator(
+                count: 5,
+                index: $index,
+                style: .timer(),
+                interval: 4,
+                interactionToken: interactionToken,
+                interactionPauseDuration: 60
+            )
+            .padding(.bottom, 20)
+        }
+        .simultaneousGesture(
+            DragGesture()
+                .onEnded { _ in
+                    interactionToken += 1
+                }
+        )
+    }
+}
+```
+
+The playback button has priority over the interaction delay. Manually pausing playback cancels the pending automatic resume.
+
 SwiftUI previews run in an Xcode app target or preview host. SPM distributes and compiles the SwiftUI source, but does not provide a standalone preview canvas.
 
 ## Development

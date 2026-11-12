@@ -50,6 +50,10 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color? = nil,
         autoAdvance: Bool? = nil,
         interval: TimeInterval = 3,
+        // Changes to this value signal user interaction outside the indicator.
+        interactionToken: Int = 0,
+        // Delay before automatic playback resumes after interaction.
+        interactionPauseDuration: TimeInterval = 60,
         onIndexChange: ((Int) -> Void)? = nil
     ) where Indicator == EmptyView {
         self.init(
@@ -64,6 +68,8 @@ public struct YTPageIndicator<Indicator: View>: View {
             inactiveColor: inactiveColor,
             autoAdvance: autoAdvance,
             interval: interval,
+            interactionToken: interactionToken,
+            interactionPauseDuration: interactionPauseDuration,
             onIndexChange: onIndexChange,
             customIndicator: nil
         )
@@ -82,6 +88,10 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color? = nil,
         autoAdvance: Bool? = nil,
         interval: TimeInterval = 3,
+        // Changes to this value signal user interaction outside the indicator.
+        interactionToken: Int = 0,
+        // Delay before automatic playback resumes after interaction.
+        interactionPauseDuration: TimeInterval = 60,
         onIndexChange: ((Int) -> Void)? = nil,
         @ViewBuilder indicatorBuilder: @escaping (Int, Double, Bool) -> Indicator
     ) {
@@ -97,6 +107,8 @@ public struct YTPageIndicator<Indicator: View>: View {
             inactiveColor: inactiveColor,
             autoAdvance: autoAdvance,
             interval: interval,
+            interactionToken: interactionToken,
+            interactionPauseDuration: interactionPauseDuration,
             onIndexChange: onIndexChange,
             customIndicator: indicatorBuilder
         )
@@ -113,6 +125,8 @@ public struct YTPageIndicator<Indicator: View>: View {
     private let inactiveColor: Color?
     private let autoAdvance: Bool?
     private let interval: TimeInterval
+    private let interactionToken: Int
+    private let interactionPauseDuration: TimeInterval
     private let onIndexChange: ((Int) -> Void)?
     private let indicatorBuilder: ((Int, Double, Bool) -> Indicator)?
 
@@ -120,6 +134,7 @@ public struct YTPageIndicator<Indicator: View>: View {
     @State private var isPlaying = true
     @State private var cycleStartedAt = Date()
     @State private var elapsedBeforePause: TimeInterval = 0
+    @State private var interactionPauseUntil: Date?
 
     private var currentIndex: Int {
         guard count > 0 else {
@@ -167,6 +182,8 @@ public struct YTPageIndicator<Indicator: View>: View {
         inactiveColor: Color?,
         autoAdvance: Bool?,
         interval: TimeInterval,
+        interactionToken: Int,
+        interactionPauseDuration: TimeInterval,
         onIndexChange: ((Int) -> Void)?,
         customIndicator: ((Int, Double, Bool) -> Indicator)?
     ) {
@@ -181,6 +198,8 @@ public struct YTPageIndicator<Indicator: View>: View {
         self.inactiveColor = inactiveColor
         self.autoAdvance = autoAdvance
         self.interval = max(0.1, interval)
+        self.interactionToken = interactionToken
+        self.interactionPauseDuration = max(0, interactionPauseDuration)
         self.onIndexChange = onIndexChange
         indicatorBuilder = customIndicator
     }
@@ -227,17 +246,32 @@ public struct YTPageIndicator<Indicator: View>: View {
             synchronizeIndex()
             resetTimer()
         }
+        .task(id: interactionPauseUntil) {
+            guard let pauseUntil = interactionPauseUntil else {
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(max(0, pauseUntil.timeIntervalSinceNow)))
+            } catch {
+                return
+            }
+
+            guard isPlaying, interactionPauseUntil == pauseUntil else {
+                return
+            }
+
+            cycleStartedAt = Date()
+            interactionPauseUntil = nil
+        }
+        .onChange(of: interactionToken) {
+            registerInteraction()
+        }
         .accessibilityElement(children: .contain)
     }
 
     private var shouldTick: Bool {
         usesAutoAdvance && isPlaying && count > 1
-    }
-
-    private func progress(at date: Date) -> Double {
-        guard usesAutoAdvance, count > 1 else { return 0 }
-        let elapsed = elapsedBeforePause + (isPlaying ? date.timeIntervalSince(cycleStartedAt) : 0)
-        return min(max(elapsed / interval, 0), 1)
     }
 
     @ViewBuilder
@@ -286,6 +320,15 @@ public struct YTPageIndicator<Indicator: View>: View {
         }
     }
 
+    private func progress(at date: Date) -> Double {
+        guard usesAutoAdvance, count > 1 else {
+            return 0
+        }
+
+        let elapsed = elapsedBeforePause + (isPlaying && interactionPauseUntil == nil ? date.timeIntervalSince(cycleStartedAt) : 0)
+        return min(max(elapsed / interval, 0), 1)
+    }
+
     private func timerIndicator(at itemIndex: Int, active: Bool, progress: Double) -> some View {
         let trackWidth = active ? (expandedWidth ?? 36) : size.width
         let fillWidth = itemIndex < currentIndex
@@ -303,6 +346,7 @@ public struct YTPageIndicator<Indicator: View>: View {
     }
 
     private func select(_ newIndex: Int) {
+        registerInteraction()
         guard newIndex != currentIndex else {
             return
         }
@@ -341,12 +385,27 @@ public struct YTPageIndicator<Indicator: View>: View {
 
     private func togglePlayback() {
         if isPlaying {
-            elapsedBeforePause += Date().timeIntervalSince(cycleStartedAt)
+            if interactionPauseUntil == nil {
+                elapsedBeforePause += Date().timeIntervalSince(cycleStartedAt)
+            }
             isPlaying = false
+            interactionPauseUntil = nil
         } else {
             cycleStartedAt = Date()
             isPlaying = true
+            interactionPauseUntil = nil
         }
+    }
+
+    private func registerInteraction() {
+        guard usesAutoAdvance, isPlaying, interactionPauseDuration > 0 else { return }
+
+        let now = Date()
+        if interactionPauseUntil == nil {
+            elapsedBeforePause += now.timeIntervalSince(cycleStartedAt)
+        }
+        cycleStartedAt = now
+        interactionPauseUntil = now.addingTimeInterval(interactionPauseDuration)
     }
 
     private func resetTimer() {
