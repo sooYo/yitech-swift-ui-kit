@@ -25,6 +25,7 @@ import YiTechSwiftUI
 ```swift
 YTLike(
     initialCount: 1_300,
+    isLiked: $isLiked,
     shape: .star, // .heart by default; .thumbsUp also available
     strokeWidth: 2.3,
     fillColor: Color(red: 229 / 255, green: 72 / 255, blue: 77 / 255),
@@ -43,6 +44,36 @@ YTLike(
         }
     }
 )
+```
+
+Pass `isLiked` as a binding when the parent owns the state. If `shouldStart` returns `false`, the parent can update `isLiked` after its own work finishes; the control then animates to the new value. Omit the binding for local state.
+
+`YTCategoryView` displays hierarchical data conforming to `YTCategoryItem`. Bind `selectedID` when selection is parent-owned, or use `initialSelectedID` for initial navigation without a binding. `Style` configures the default chip layout and colors; `itemBuilder` replaces each chip's content, so custom chips draw their own colors:
+
+```swift
+struct Category: YTCategoryItem {
+    let id: UUID
+    let name: String
+    let children: [Category]
+}
+
+YTCategoryView(
+    items: categories,
+    selectedID: $selectedCategoryID,
+    onSelect: { category in
+        print(category.name)
+    }
+) { category, isSelected, hasChildren in
+    HStack(spacing: 4) {
+        Text(category.name)
+        if hasChildren { Image(systemName: "chevron.down") }
+    }
+    .fontWeight(isSelected ? .semibold : .regular)
+    .foregroundStyle(isSelected ? .white : .primary)
+    .padding(.horizontal, 10)
+    .frame(height: 28)
+    .background(isSelected ? Color.pink : Color.secondary.opacity(0.12), in: Capsule())
+}
 ```
 
 SwiftUI previews run in an Xcode app target or preview host. SPM distributes and compiles the SwiftUI source, but does not provide a standalone preview canvas.
