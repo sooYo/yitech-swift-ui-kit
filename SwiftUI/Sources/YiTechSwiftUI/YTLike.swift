@@ -39,8 +39,10 @@ public struct YTLike: View {
         Color(red: 159 / 255, green: 199 / 255, blue: 250 / 255)
     ]
 
+    /// Bind `isLiked` when the parent owns state, including updates after `shouldStart` returns false
     public init(
-        initialCount: Int = 1_300,
+        initialCount: Int = 0,
+        isLiked: Binding<Bool>? = nil,
         size: CGFloat = 44,
         shape: Shape = .heart,
         strokeWidth: CGFloat = 1.6,
@@ -54,7 +56,11 @@ public struct YTLike: View {
         shouldStart: @escaping () -> Bool = { true },
         onAnimationPhaseChange: @escaping (AnimationPhase) -> Void = { _ in }
     ) {
+        let initialLiked = isLiked?.wrappedValue ?? false
         self.initialCount = max(0, initialCount)
+        self.likedBinding = isLiked
+        self._isLiked = State(initialValue: initialLiked)
+        self._animationTargetLiked = State(initialValue: initialLiked)
         self.size = max(1, size)
         self.shape = shape
         self.strokeWidth = max(0, strokeWidth)
@@ -70,6 +76,7 @@ public struct YTLike: View {
     }
 
     private let initialCount: Int
+    private let likedBinding: Binding<Bool>?
     private let size: CGFloat
     private let shape: Shape
     private let strokeWidth: CGFloat
@@ -120,8 +127,20 @@ public struct YTLike: View {
             .accessibilityAddTraits(isLiked ? [.isSelected] : [])
         }
         .buttonStyle(.plain)
+        .onChange(of: likedBinding?.wrappedValue) { newValue in
+            guard let newValue, newValue != animationTargetLiked else {
+                return
+            }
+
+            startTransition(to: newValue)
+        }
         .onDisappear {
             animationTask?.cancel()
+            if let liked = likedBinding?.wrappedValue {
+                isLiked = liked
+                animationTargetLiked = liked
+                animationProgress = 1
+            }
         }
     }
 
@@ -262,13 +281,17 @@ public struct YTLike: View {
             return
         }
 
-        animationTask?.cancel()
-
         let currentTarget = animationProgress < 1 && animationProgress < Self.revealProgress
             ? animationTargetLiked
             : isLiked
 
         let targetLiked = !currentTarget
+        likedBinding?.wrappedValue = targetLiked
+        startTransition(to: targetLiked)
+    }
+
+    private func startTransition(to targetLiked: Bool) {
+        animationTask?.cancel()
         animationTargetLiked = targetLiked
 
         if !targetLiked {
