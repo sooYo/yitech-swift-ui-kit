@@ -23,9 +23,11 @@ import YiTechSwiftUI
 `YTLike` is a native SwiftUI like button with a count, heart, star, or thumbs-up shape, fill and stroke styling, bloom or firework particles, configurable animation timing, and animation progress callbacks:
 
 ```swift
+@State private var likeValue: YTLike.LikeValue = .unliked(animated: false)
+
 YTLike(
     initialCount: 1_300,
-    isLiked: $isLiked,
+    likeValue: $likeValue,
     shape: .star, // .heart by default; .thumbsUp also available
     strokeWidth: 2.3,
     fillColor: Color(red: 229 / 255, green: 72 / 255, blue: 77 / 255),
@@ -46,7 +48,7 @@ YTLike(
 )
 ```
 
-Pass `isLiked` as a binding when the parent owns the state. If `shouldStart` returns `false`, the parent can update `isLiked` after its own work finishes; the control then animates to the new value. Omit the binding for local state.
+Pass `likeValue` as a binding when the parent owns the state. Each state change specifies whether to animate. For example, use `.liked(animated: false)` when initial data arrives, and `.unliked(animated: false)` for a silent external update. The initial value never animates; changing only `animated` without changing the liked state has no effect. Accepted button taps animate automatically. If `shouldStart` returns `false`, the parent can write `.liked(animated: true)` or `.unliked(animated: true)` after its own work finishes to animate that result. Omit the binding for local state.
 
 `YTCategoryView` displays hierarchical data conforming to `YTCategoryItem`. Bind `selectedID` when selection is parent-owned, or use `initialSelectedID` for initial navigation without a binding. `Style` configures the default chip layout and colors; `itemBuilder` replaces each chip's content, so custom chips draw their own colors:
 

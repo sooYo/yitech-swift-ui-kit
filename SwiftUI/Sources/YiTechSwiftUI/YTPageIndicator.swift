@@ -264,7 +264,7 @@ public struct YTPageIndicator<Indicator: View>: View {
             cycleStartedAt = Date()
             interactionPauseUntil = nil
         }
-        .onChange(of: interactionToken) {
+        .onChangeCompatible(of: interactionToken) { _ in
             registerInteraction()
         }
         .accessibilityElement(children: .contain)

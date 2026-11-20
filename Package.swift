@@ -9,7 +9,7 @@ let package = Package(
     name: "YiTechUI",
     platforms: [
         .iOS(.v17),
-        .macOS(.v13),
+        .macOS(.v15),
         .tvOS(.v16),
         .watchOS(.v9)
     ],

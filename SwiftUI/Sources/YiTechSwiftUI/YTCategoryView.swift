@@ -146,7 +146,7 @@ public struct YTCategoryView<Item: YTCategoryItem>: View {
         .padding(.horizontal, style.horizontalPadding)
         .background(backgroundColor)
         .onAppear { synchronizePath(to: selectedID) }
-        .onChange(of: selection?.wrappedValue) { newValue in
+        .onChangeCompatible(of: selection?.wrappedValue) { newValue in
             if hasPendingPickerSelection {
                 hasPendingPickerSelection = false
                 
@@ -157,7 +157,7 @@ public struct YTCategoryView<Item: YTCategoryItem>: View {
             
             synchronizePath(to: newValue)
         }
-        .onChange(of: items.map(\.id)) { _ in synchronizePath(to: selectedID) }
+        .onChangeCompatible(of: items.map(\.id)) { _ in synchronizePath(to: selectedID) }
     }
 
     private func select(_ item: Item) {
