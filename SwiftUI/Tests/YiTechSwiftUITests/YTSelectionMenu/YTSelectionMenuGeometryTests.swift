@@ -14,17 +14,17 @@ import SwiftUI
 
 struct YTSelectionMenuGeometryTests {
     @Test @MainActor
-    func defaultContentKeepsBaselineGeometry() {
+    func defaultContentUsesCapsuleGeometry() {
         let hostingView = NSHostingView(rootView: SelectionMenuDefaultGeometryTestHost())
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        #expect(abs(hostingView.fittingSize.width - 252) < 1)
-        #expect(abs(hostingView.fittingSize.height - 206) < 1)
+        #expect(abs(hostingView.fittingSize.width - 140) < 1)
+        #expect(abs(hostingView.fittingSize.height - 38) < 1)
     }
 
     @Test @MainActor
-    func selectionChangeKeepsStageWidthFixed() {
+    func selectionChangeKeepsCapsuleWidthFixed() {
         let model = SelectionMenuModel()
         let hostingView = NSHostingView(rootView: SelectionMenuTestHost(model: model))
         hostingView.layoutSubtreeIfNeeded()
@@ -35,27 +35,50 @@ struct YTSelectionMenuGeometryTests {
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        #expect(abs(initialWidth - 252) < 1)
+        #expect(abs(initialWidth - 140) < 1)
         #expect(abs(hostingView.fittingSize.width - initialWidth) < 1)
     }
 
     @Test @MainActor
-    func existingTriggerReservesStageWidth() {
+    func existingTriggerIgnoresConfiguredCapsuleSize() {
         let hostingView = NSHostingView(rootView: SelectionMenuTriggerTestHost())
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        #expect(abs(hostingView.fittingSize.width - 340) < 1)
+        #expect(abs(hostingView.fittingSize.width - 300) < 1)
+        #expect(abs(hostingView.fittingSize.height - 38) < 1)
     }
 
     @Test @MainActor
-    func configuredRowSizeSetsPanelStage() {
+    func naturalTriggerKeepsItsIntrinsicSize() {
+        let trigger = NSHostingView(rootView: SelectionMenuNaturalButton(action: {}))
+        let menu = NSHostingView(rootView: SelectionMenuNaturalTriggerTestHost())
+        trigger.layoutSubtreeIfNeeded()
+        menu.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        #expect(abs(menu.fittingSize.width - trigger.fittingSize.width) < 1)
+        #expect(abs(menu.fittingSize.height - trigger.fittingSize.height) < 1)
+    }
+
+    @Test @MainActor
+    func configuredRowSizeDoesNotChangeCapsuleGeometry() {
         let hostingView = NSHostingView(rootView: SelectionMenuCustomGeometryTestHost())
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        #expect(abs(hostingView.fittingSize.width - 300) < 1)
-        #expect(abs(hostingView.fittingSize.height - 246) < 1)
+        #expect(abs(hostingView.fittingSize.width - 140) < 1)
+        #expect(abs(hostingView.fittingSize.height - 38) < 1)
+    }
+
+    @Test @MainActor
+    func expandedPanelDoesNotIncreaseVStackHeight() {
+        let hostingView = NSHostingView(rootView: SelectionMenuExpandedGeometryTestHost())
+        hostingView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+
+        #expect(abs(hostingView.fittingSize.width - 120) < 1)
+        #expect(abs(hostingView.fittingSize.height - 60) < 1)
     }
 
     @Test @MainActor
@@ -64,8 +87,8 @@ struct YTSelectionMenuGeometryTests {
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        #expect(hostingView.fittingSize.width >= 252)
-        #expect(hostingView.fittingSize.height > 100)
+        #expect(hostingView.fittingSize.width >= 140)
+        #expect(hostingView.fittingSize.height < 100)
     }
 }
 
@@ -114,12 +137,70 @@ private struct SelectionMenuTriggerTestHost: View {
         YTSelectionMenu(
             items: items,
             selection: $selection,
-            style: .init(dimensions: .init(capsule: .init(300, 38))),
+            style: .init(dimensions: .init(capsule: .init(600, 100))),
             label: { $0.name },
             trigger: { context in
                 Button(context.title, action: context.open)
                     .buttonStyle(.plain)
                     .frame(width: 300, height: 38)
+            }
+        )
+    }
+}
+
+private struct SelectionMenuExpandedGeometryTestHost: View {
+    @State private var selection: String?
+
+    private let items = [
+        SelectionMenuTestItem(id: "one", name: "One"),
+        SelectionMenuTestItem(id: "two", name: "Two"),
+        SelectionMenuTestItem(id: "three", name: "Three"),
+        SelectionMenuTestItem(id: "four", name: "Four")
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            YTSelectionMenu(
+                items: items,
+                selection: $selection,
+                style: .init(dimensions: .init(row: .init(100, 40))),
+                label: { $0.name },
+                trigger: { context in
+                    Button("Open", action: context.open)
+                        .buttonStyle(.plain)
+                        .frame(width: 120, height: 40)
+                        .onAppear { context.open() }
+                }
+            )
+
+            Color.clear.frame(width: 120, height: 20)
+        }
+    }
+}
+
+private struct SelectionMenuNaturalButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button("Select", action: action)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+    }
+}
+
+private struct SelectionMenuNaturalTriggerTestHost: View {
+    @State private var selection: String?
+
+    private let items = [SelectionMenuTestItem(id: "one", name: "One")]
+
+    var body: some View {
+        YTSelectionMenu(
+            items: items,
+            selection: $selection,
+            label: { $0.name },
+            trigger: { context in
+                SelectionMenuNaturalButton(action: context.open)
             }
         )
     }

@@ -14,7 +14,7 @@ struct YTSelectionMenuRow<Content: View>: View {
     let showsHighlighter: Bool
     let highlighter: YTSelectionMenuStyle.Highlighter
     let size: YTSelectionMenuStyle.Dimensions.Size
-    let corner: CGFloat
+    let cornerRadius: CGFloat
     let action: () -> Void
     let content: () -> Content
 
@@ -29,7 +29,7 @@ struct YTSelectionMenuRow<Content: View>: View {
                 .clipped()
                 .frame(width: size.width, height: size.height, alignment: .leading)
                 .background {
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(isSelected && showsHighlighter ? highlighter.backgroundColor : .clear)
                         .transaction { $0.animation = nil }
                 }

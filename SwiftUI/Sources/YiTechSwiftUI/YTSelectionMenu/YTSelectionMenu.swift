@@ -7,14 +7,13 @@
 
 import SwiftUI
 
-/// A selection menu whose capsule grows into its panel around a fixed center
+/// A selection menu whose panel floats around the trigger without changing its layout size
 public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowContent: View>: View {
     /// Custom capsule supplies content; the menu owns its button behavior and morphing background
     public init(
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String,
         @ViewBuilder capsule: @escaping (String) -> Capsule,
@@ -24,7 +23,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             wrapsCapsuleInButton: true,
@@ -38,7 +36,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String,
         @ViewBuilder trigger: @escaping (YTSelectionMenuTriggerContext) -> Capsule,
@@ -48,7 +45,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             wrapsCapsuleInButton: false,
@@ -61,7 +57,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String,
-        corner: Double,
         style: YTSelectionMenuStyle,
         label: @escaping (Item) -> String,
         wrapsCapsuleInButton: Bool,
@@ -71,7 +66,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         self.items = items
         self._selection = selection
         self.placeholder = placeholder
-        self.corner = corner
         self.style = style
         self.label = label
         self.wrapsCapsuleInButton = wrapsCapsuleInButton
@@ -82,7 +76,6 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
     private let items: [Item]
     @Binding private var selection: Item.ID?
     private let placeholder: String
-    private let corner: Double
     private let style: YTSelectionMenuStyle
     private let label: (Item) -> String
     private let wrapsCapsuleInButton: Bool
@@ -101,12 +94,8 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         items.first(where: { $0.id == selection }).map(label) ?? placeholder
     }
 
-    private var panelCorner: Double {
-        min(40, max(0, style.panel.cornerRadius ?? corner))
-    }
-
-    private var shapeCorner: Double {
-        isExpanded ? panelCorner : min(19, max(0, corner * 19 / 20))
+    private var shapeCornerRadius: Double {
+        max(0, isExpanded ? style.panel.cornerRadius : style.capsuleCornerRadius)
     }
 
     private var shapeAnimation: Animation {
@@ -120,46 +109,48 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         )
     }
 
-    private var stageSize: CGSize {
-        CGSize(
-            width: max(style.dimensions.capsule.width, panelSize.width) + 40,
-            height: max(style.dimensions.capsule.height, panelSize.height) + 40
-        )
-    }
-
     public var body: some View {
-        ZStack {
-            Color.clear
-                .frame(width: stageSize.width, height: stageSize.height)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: collapse)
-                .allowsHitTesting(isExpanded)
+        capsule
+            .opacity(isExpanded ? 0 : 1)
+            .animation(.easeOut(duration: 0.16), value: isExpanded)
+            .background {
+                GeometryReader { geometry in
+                    RoundedRectangle(cornerRadius: shapeCornerRadius, style: .continuous)
+                        .fill(isExpanded ? style.panel.backgroundColor : style.capsuleBackgroundColor)
+                        .frame(
+                            width: isExpanded ? panelSize.width : geometry.size.width,
+                            height: isExpanded ? panelSize.height : geometry.size.height
+                        )
+                        .shadow(
+                            color: isExpanded ? style.panel.shadow?.color ?? .clear : .clear,
+                            radius: isExpanded ? style.panel.shadow?.radius ?? 0 : 0,
+                            x: isExpanded ? style.panel.shadow?.x ?? 0 : 0,
+                            y: isExpanded ? style.panel.shadow?.y ?? 0 : 0
+                        )
+                        .scaleEffect(pressScale)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
+            }
+            .overlay {
+                GeometryReader { geometry in
+                    ZStack {
+                        Color.clear
+                            .frame(
+                                width: max(geometry.size.width, panelSize.width) + 40,
+                                height: max(geometry.size.height, panelSize.height) + 40
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture(perform: collapse)
+                            .allowsHitTesting(isExpanded)
 
-            RoundedRectangle(cornerRadius: shapeCorner, style: .continuous)
-                .fill(isExpanded ? style.panel.backgroundColor : style.capsuleBackgroundColor)
-                .frame(
-                    width: isExpanded ? panelSize.width : style.dimensions.capsule.width,
-                    height: isExpanded ? panelSize.height : style.dimensions.capsule.height
-                )
-                .shadow(
-                    color: isExpanded ? style.panel.shadow?.color ?? .clear : .clear,
-                    radius: isExpanded ? style.panel.shadow?.radius ?? 0 : 0,
-                    x: isExpanded ? style.panel.shadow?.x ?? 0 : 0,
-                    y: isExpanded ? style.panel.shadow?.y ?? 0 : 0
-                )
-                .scaleEffect(pressScale)
-                .onTapGesture {}
-
-            capsule
-                .opacity(isExpanded ? 0 : 1)
-                .allowsHitTesting(!isExpanded)
-                .animation(.easeOut(duration: 0.16), value: isExpanded)
-
-            rows
-                .allowsHitTesting(isExpanded)
-                .accessibilityHidden(!isExpanded)
-        }
-        .frame(width: stageSize.width, height: stageSize.height)
+                        rows
+                            .allowsHitTesting(isExpanded)
+                            .accessibilityHidden(!isExpanded)
+                    }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
+            }
+        .zIndex(isExpanded ? 1 : 0)
         .onChangeCompatible(of: isPressed, perform: handlePressChange)
         .onDisappear { pressTask?.cancel() }
     }
@@ -170,21 +161,28 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             Button(action: expand) { capsuleVisual }
                 .buttonStyle(YTSelectionMenuPressStyle(isPressed: $isPressed))
                 .disabled(items.isEmpty)
+                .allowsHitTesting(!isExpanded)
                 .accessibilityLabel(currentLabel)
                 .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         } else {
             capsuleVisual
                 .disabled(items.isEmpty)
+                .allowsHitTesting(!isExpanded)
                 .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         }
     }
 
+    @ViewBuilder
     private var capsuleVisual: some View {
-        capsuleContent(.init(title: currentLabel, isExpanded: isExpanded, open: expand))
-            .frame(width: style.dimensions.capsule.width, height: style.dimensions.capsule.height)
-            .clipped()
-            .contentShape(Rectangle())
-            .scaleEffect(pressScale)
+        if wrapsCapsuleInButton {
+            capsuleContent(.init(title: currentLabel, isExpanded: isExpanded, open: expand))
+                .frame(width: style.dimensions.capsule.width, height: style.dimensions.capsule.height)
+                .clipped()
+                .contentShape(Rectangle())
+                .scaleEffect(pressScale)
+        } else {
+            capsuleContent(.init(title: currentLabel, isExpanded: isExpanded, open: expand))
+        }
     }
 
     private var rows: some View {
@@ -196,7 +194,7 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
                     showsHighlighter: style.highlighter.isVisible && showsHighlighter,
                     highlighter: style.highlighter,
                     size: style.dimensions.row,
-                    corner: min(17, max(0, corner - 10)),
+                    cornerRadius: max(0, style.rowCornerRadius),
                     action: { select(item) },
                     content: { rowContent(item, selection == item.id) }
                 )
@@ -407,30 +405,94 @@ private struct YTSelectionMenuExistingButton: View {
 }
 
 private struct YTSelectionMenuTriggerPreview: View {
-    @State private var selection: String?
+    @State private var selection: String? = "hsb"
+
+    let opensOnAppear: Bool
 
     private let items = [
-        YTSelectionMenuPreviewItem(id: "all", name: "全部"),
-        YTSelectionMenuPreviewItem(id: "warm", name: "暖色调"),
-        YTSelectionMenuPreviewItem(id: "cool", name: "冷色调")
+        YTSelectionMenuPreviewItem(id: "hex", name: "HEX"),
+        YTSelectionMenuPreviewItem(id: "rgb", name: "RGB"),
+        YTSelectionMenuPreviewItem(id: "hsl", name: "HSL"),
+        YTSelectionMenuPreviewItem(id: "hsb", name: "HSB")
     ]
 
     var body: some View {
-        YTSelectionMenu(
-            items: items,
-            selection: $selection,
-            placeholder: "选择颜色",
-            style: .init(dimensions: .init(capsule: .init(180, 38))),
-            label: { $0.name },
-            trigger: { context in
-                YTSelectionMenuExistingButton(title: context.title, action: context.open)
+        VStack(spacing: 0) {
+            settingsRow(symbol: "waveform", title: "触感反馈", detail: "点按时提供触感反馈", value: "开启")
+            Divider().padding(.leading, 60)
+            settingsRow(symbol: "textformat.abc", title: "显示颜色名称和值", detail: "空间允许时显示颜色信息", value: "开启")
+            Divider().padding(.leading, 60)
+
+            YTSelectionMenu(
+                items: items,
+                selection: $selection,
+                style: .init(
+                    panel: .init(shadow: .init()),
+                    dimensions: .init(row: .init(268, 40)),
+                    capsuleBackgroundColor: .clear
+                ),
+                label: { $0.name },
+                trigger: { context in
+                    Button(action: context.open) {
+                        settingsRow(
+                            symbol: "number",
+                            title: "默认颜色值格式",
+                            detail: "用于收藏列表中的颜色值",
+                            value: context.title
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .onAppear {
+                        if opensOnAppear { context.open() }
+                    }
+                }
+            )
+
+            Divider().padding(.leading, 60)
+            settingsRow(symbol: "sparkles", title: "相似推荐", detail: "根据收藏推荐相近配色", value: "即将开放")
+        }
+        .frame(width: 320)
+        .background(Color(red: 0.94, green: 0.94, blue: 0.93), in: RoundedRectangle(cornerRadius: 16))
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
+    }
+
+    private func settingsRow(symbol: String, title: String, detail: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 18))
+                .foregroundStyle(Color(red: 0.35, green: 0.48, blue: 0.29))
+                .frame(width: 32, height: 32)
+                .background(.white, in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                Text(detail)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
-        )
+
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 68)
     }
 }
 
-#Preview("已有按钮触发") {
-    YTSelectionMenuTriggerPreview()
+#Preview("设置行 · 收起") {
+    YTSelectionMenuTriggerPreview(opensOnAppear: false)
+}
+
+#Preview("设置行 · 展开") {
+    YTSelectionMenuTriggerPreview(opensOnAppear: true)
 }
 
 private struct YTSelectionMenuExpandedPreview: View {
@@ -448,7 +510,6 @@ private struct YTSelectionMenuExpandedPreview: View {
             selection: $selection,
             style: .init(
                 panel: .init(shadow: .init()),
-                dimensions: .init(capsule: .init(180, 38)),
                 highlighter: .init(icon: Image(systemName: "star.fill"))
             ),
             label: { $0.name },

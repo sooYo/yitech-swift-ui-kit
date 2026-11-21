@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-/// Appearance and fixed geometry of the menu-owned shape and selection decoration
+/// Appearance and geometry of the menu-owned shape and selection decoration
 public struct YTSelectionMenuStyle {
-    /// Fixed sizes keep the menu center unchanged when content or selection changes; oversized content is clipped
+    /// Fixed sizes for menu-owned capsule content and rows; custom triggers keep their own geometry
     public struct Dimensions {
         /// Width and height in points for a capsule or menu row
         public struct Size {
@@ -32,7 +32,7 @@ public struct YTSelectionMenuStyle {
             }
         }
 
-        /// Collapsed shape and content size in points; custom triggers should fit within it
+        /// Collapsed size for menu-owned capsule content; custom triggers use their natural size
         public var capsule: Size
 
         /// Row size in points; a visible highlighter reserves 32 points on its trailing edge
@@ -76,8 +76,8 @@ public struct YTSelectionMenuStyle {
             }
         }
 
-        /// Panel corner radius in points, clamped to 0...40; `nil` uses the menu's `corner` argument
-        public var cornerRadius: Double?
+        /// Corner radius of the expanded panel in points
+        public var cornerRadius: Double
 
         /// Expanded panel shadow; `nil` removes it
         public var shadow: Shadow?
@@ -87,7 +87,7 @@ public struct YTSelectionMenuStyle {
 
         public init(
             backgroundColor: Color = Color(red: 0.13, green: 0.14, blue: 0.17),
-            cornerRadius: Double? = nil,
+            cornerRadius: Double = 20,
             shadow: Shadow? = nil
         ) {
             self.backgroundColor = backgroundColor
@@ -127,6 +127,12 @@ public struct YTSelectionMenuStyle {
     /// Background color of the shared shape while collapsed, behind capsule content
     public var capsuleBackgroundColor: Color
 
+    /// Corner radius of the collapsed background in points; custom triggers may draw their own shape
+    public var capsuleCornerRadius: Double
+
+    /// Corner radius of each option row in points
+    public var rowCornerRadius: Double
+
     /// Defaults: 140×38 capsule and 188×34 row; panel adds 12-point padding and 2-point row spacing
     public var dimensions: Dimensions
 
@@ -134,11 +140,15 @@ public struct YTSelectionMenuStyle {
         panel: Panel = .init(),
         dimensions: Dimensions = .init(),
         highlighter: Highlighter = .init(),
-        capsuleBackgroundColor: Color = Color(red: 0.13, green: 0.14, blue: 0.17)
+        capsuleBackgroundColor: Color = Color(red: 0.13, green: 0.14, blue: 0.17),
+        capsuleCornerRadius: Double = 19,
+        rowCornerRadius: Double = 10
     ) {
         self.panel = panel
         self.dimensions = dimensions
         self.highlighter = highlighter
         self.capsuleBackgroundColor = capsuleBackgroundColor
+        self.capsuleCornerRadius = capsuleCornerRadius
+        self.rowCornerRadius = rowCornerRadius
     }
 }

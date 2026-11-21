@@ -78,7 +78,7 @@ YTCategoryView(
 }
 ```
 
-`YTSelectionMenu` keeps its capsule and expanded panel centered on one morphing shape. Bind the selected item ID; the default capsule displays the selected label or a placeholder, and rows display item labels. Supply `capsule` and `rowContent` builders to replace either or both contents. `YTSelectionMenuStyle.Panel` groups the panel background, corner, and shadow. `YTSelectionMenuStyle.Highlighter` owns the selected row background and trailing icon; `isVisible` hides both. `Dimensions` fixes capsule and row sizes with `YTSelectionMenuStyle.Dimensions.Size(width, height)`, so a selection change does not move the menu:
+`YTSelectionMenu` keeps its capsule and floating panel centered on one morphing shape. The panel does not affect the surrounding layout. Bind the selected item ID; the default capsule displays the selected label or a placeholder, and rows display item labels. Supply `capsule` and `rowContent` builders to replace either or both contents. `YTSelectionMenuStyle.Panel` groups the panel background, corner, and shadow. `capsuleCornerRadius` and `rowCornerRadius` control the other two shapes independently. `YTSelectionMenuStyle.Highlighter` owns the selected row background and trailing icon; `isVisible` hides both. `Dimensions` fixes menu-owned capsule and row sizes with `YTSelectionMenuStyle.Dimensions.Size(width, height)`, so a selection change does not move the menu:
 
 ```swift
 @State private var selectedID: Option.ID?
@@ -123,13 +123,12 @@ YTSelectionMenu(
 )
 ```
 
-Omit either builder to use its default `Text` content. The `capsule` builder supplies display content and is wrapped by the menu's `Button`; `rowContent` supplies display content inside each menu row's `Button`. The defaults are a 140×38 capsule and 188×34 row. The panel adds 12 points of padding and 2 points between rows. Custom content exceeding its fixed area is clipped; with a visible highlighter, the trailing 32 points of each row belong to its icon. To reuse an existing interactive component, use `trigger`, set its capsule size, and forward its action:
+Omit either builder to use its default `Text` content. The `capsule` builder supplies display content and is wrapped by the menu's `Button`; `rowContent` supplies display content inside each menu row's `Button`. The defaults are a 140×38 capsule and 188×34 row. The panel adds 12 points of padding and 2 points between rows. Custom content exceeding its fixed area is clipped; with a visible highlighter, the trailing 32 points of each row belong to its icon. To reuse an existing interactive component, use `trigger` and forward its action:
 
 ```swift
 YTSelectionMenu(
     items: options,
     selection: $selectedID,
-    style: .init(dimensions: .init(capsule: .init(180, 38))),
     label: { $0.title },
     trigger: { context in
         ExistingButton(title: context.title, action: context.open)
@@ -137,7 +136,7 @@ YTSelectionMenu(
 )
 ```
 
-The custom trigger owns its press feedback. Keep its background transparent when the menu's rounded rectangle should remain the single visible morphing shape. Fit the trigger inside the configured capsule size.
+The custom trigger keeps its natural size and owns its press feedback. `dimensions.capsule` does not resize it. Keep its background transparent when the menu's rounded rectangle should remain the single visible morphing shape.
 
 `YTPageIndicator` supports manual page selection and automatic playback. Set `interactionToken` when an interaction occurs outside the indicator; each token change pauses playback and resets the delay. Playback resumes after `interactionPauseDuration` seconds, which defaults to 60 seconds:
 

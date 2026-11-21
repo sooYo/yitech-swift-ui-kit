@@ -13,7 +13,6 @@ public extension YTSelectionMenu where RowContent == AnyView {
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String,
         @ViewBuilder capsule: @escaping (String) -> Capsule
@@ -22,7 +21,6 @@ public extension YTSelectionMenu where RowContent == AnyView {
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             capsule: capsule,
@@ -34,7 +32,6 @@ public extension YTSelectionMenu where RowContent == AnyView {
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String,
         @ViewBuilder trigger: @escaping (YTSelectionMenuTriggerContext) -> Capsule
@@ -43,7 +40,6 @@ public extension YTSelectionMenu where RowContent == AnyView {
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             trigger: trigger,
@@ -58,7 +54,6 @@ public extension YTSelectionMenu where Capsule == AnyView {
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String,
         @ViewBuilder rowContent: @escaping (Item, Bool) -> RowContent
@@ -67,7 +62,6 @@ public extension YTSelectionMenu where Capsule == AnyView {
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             capsule: { defaultCapsule($0) },
@@ -82,7 +76,6 @@ public extension YTSelectionMenu where Capsule == AnyView, RowContent == AnyView
         items: [Item],
         selection: Binding<Item.ID?>,
         placeholder: String = "Select",
-        corner: Double = 20,
         style: YTSelectionMenuStyle = .init(),
         label: @escaping (Item) -> String
     ) {
@@ -90,7 +83,6 @@ public extension YTSelectionMenu where Capsule == AnyView, RowContent == AnyView
             items: items,
             selection: selection,
             placeholder: placeholder,
-            corner: corner,
             style: style,
             label: label,
             capsule: { defaultCapsule($0) },
