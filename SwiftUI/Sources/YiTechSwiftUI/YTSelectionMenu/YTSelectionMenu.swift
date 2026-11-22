@@ -89,6 +89,10 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
     @State private var pressScale: Double = 1
     @State private var showsHighlighter = true
     @State private var pressTask: Task<Void, Never>?
+    @State private var floatingState: YTSelectionMenuPanelState?
+    @State private var presentationTask: Task<Void, Never>?
+    @State private var presentsInline = true
+    @State private var capsuleFrame = CGRect.zero
 
     private var currentLabel: String {
         items.first(where: { $0.id == selection }).map(label) ?? placeholder
@@ -115,44 +119,20 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             .animation(.easeOut(duration: 0.16), value: isExpanded)
             .background {
                 GeometryReader { geometry in
-                    RoundedRectangle(cornerRadius: shapeCornerRadius, style: .continuous)
-                        .fill(isExpanded ? style.panel.backgroundColor : style.capsuleBackgroundColor)
-                        .frame(
-                            width: isExpanded ? panelSize.width : geometry.size.width,
-                            height: isExpanded ? panelSize.height : geometry.size.height
-                        )
-                        .shadow(
-                            color: isExpanded ? style.panel.shadow?.color ?? .clear : .clear,
-                            radius: isExpanded ? style.panel.shadow?.radius ?? 0 : 0,
-                            x: isExpanded ? style.panel.shadow?.x ?? 0 : 0,
-                            y: isExpanded ? style.panel.shadow?.y ?? 0 : 0
-                        )
-                        .scaleEffect(pressScale)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    shape(in: geometry.size)
                 }
             }
+            .background {
+                capsuleFrameProbe
+            }
             .overlay {
-                GeometryReader { geometry in
-                    ZStack {
-                        Color.clear
-                            .frame(
-                                width: max(geometry.size.width, panelSize.width) + 40,
-                                height: max(geometry.size.height, panelSize.height) + 40
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture(perform: collapse)
-                            .allowsHitTesting(isExpanded)
-
-                        rows
-                            .allowsHitTesting(isExpanded)
-                            .accessibilityHidden(!isExpanded)
-                    }
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                if presentsInline {
+                    inlinePanel
                 }
             }
         .zIndex(isExpanded ? 1 : 0)
         .onChangeCompatible(of: isPressed, perform: handlePressChange)
-        .onDisappear { pressTask?.cancel() }
+        .onDisappear(perform: handleDisappear)
     }
 
     @ViewBuilder
@@ -185,7 +165,70 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         }
     }
 
-    private var rows: some View {
+    /// The morphing background; the floating layer draws the expanded version of this same shape
+    private func shape(in size: CGSize) -> some View {
+        let expandsInPlace = isExpanded && presentsInline
+
+        return RoundedRectangle(cornerRadius: shapeCornerRadius, style: .continuous)
+            .fill(expandsInPlace ? style.panel.backgroundColor : style.capsuleBackgroundColor)
+            .frame(
+                width: expandsInPlace ? panelSize.width : size.width,
+                height: expandsInPlace ? panelSize.height : size.height
+            )
+            .shadow(
+                color: expandsInPlace ? style.panel.shadow?.color ?? .clear : .clear,
+                radius: expandsInPlace ? style.panel.shadow?.radius ?? 0 : 0,
+                x: expandsInPlace ? style.panel.shadow?.x ?? 0 : 0,
+                y: expandsInPlace ? style.panel.shadow?.y ?? 0 : 0
+            )
+            .scaleEffect(pressScale)
+            .position(x: size.width / 2, y: size.height / 2)
+            .opacity(floatingState == nil ? 1 : 0)
+    }
+
+    /// Reports the capsule rect in window space, the origin the floating layer morphs from
+    private var capsuleFrameProbe: some View {
+        GeometryReader { geometry in
+            let frame = geometry.frame(in: .global)
+
+            Color.clear
+                .onAppear { updateCapsuleFrame(frame) }
+                .onChangeCompatible(of: frame) { newFrame in
+                    updateCapsuleFrame(newFrame)
+                }
+        }
+    }
+
+    private func updateCapsuleFrame(_ frame: CGRect) {
+        capsuleFrame = frame
+
+        // Keep the presented panel anchored to the trigger, so scrolling moves it along
+        floatingState?.anchor = frame
+    }
+
+    /// Rows and dismiss area drawn inside the trigger, used when no layer can host the panel
+    @ViewBuilder
+    private var inlinePanel: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.clear
+                    .frame(
+                        width: max(geometry.size.width, panelSize.width) + 40,
+                        height: max(geometry.size.height, panelSize.height) + 40
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: collapse)
+                    .allowsHitTesting(isExpanded)
+
+                rowsContent(isExpanded: isExpanded)
+                    .allowsHitTesting(isExpanded)
+                    .accessibilityHidden(!isExpanded)
+            }
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+    }
+
+    private func rowsContent(isExpanded: Bool) -> some View {
         VStack(spacing: 2) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 YTSelectionMenuRow(
@@ -249,9 +292,37 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         }
 
         showsHighlighter = true
-        withAnimation(shapeAnimation) { isExpanded = true }
         withAnimation(.easeOut(duration: 0.22)) { pressScale = 1 }
         isPressed = false
+
+        presentationTask?.cancel()
+        presentationTask = Task { @MainActor in
+            // The probe reports the capsule rect during layout; one hop is enough to have it
+            await Task.yield()
+
+            guard capsuleFrame.width > 0, capsuleFrame.height > 0 else {
+                presentInPlace()
+                return
+            }
+
+            let state = makePanelState()
+
+            guard YTSelectionMenuPanelPresenters.shared.present(state) else {
+                presentInPlace()
+                return
+            }
+
+            presentsInline = false
+            floatingState = state
+
+            withAnimation(.easeOut(duration: 0.16)) { isExpanded = true }
+        }
+    }
+
+    /// Falls back to the in-place panel, which is the only option below the trigger's own layer
+    private func presentInPlace() {
+        presentsInline = true
+        withAnimation(shapeAnimation) { isExpanded = true }
     }
 
     private func collapse() {
@@ -259,7 +330,76 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             return
         }
 
-        withAnimation(shapeAnimation) { isExpanded = false }
+        presentationTask?.cancel()
+
+        guard let state = floatingState else {
+            withAnimation(shapeAnimation) { isExpanded = false }
+            return
+        }
+
+        withAnimation(shapeAnimation) {
+            state.isExpanded = false
+            isExpanded = false
+        }
+
+        presentationTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 320))
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            tearDownFloating()
+        }
+    }
+
+    private func tearDownFloating() {
+        guard let state = floatingState else {
+            presentsInline = true
+            return
+        }
+
+        YTSelectionMenuPanelPresenters.shared.dismiss(state)
+        floatingState = nil
+        presentsInline = true
+    }
+
+    private func handleDisappear() {
+        pressTask?.cancel()
+        presentationTask?.cancel()
+        tearDownFloating()
+    }
+
+    private func makePanelState() -> YTSelectionMenuPanelState {
+        let spec = YTSelectionMenuPanelSpec(
+            capsuleSize: capsuleFrame.size,
+            panelSize: panelSize,
+            capsuleCornerRadius: style.capsuleCornerRadius,
+            panelCornerRadius: style.panel.cornerRadius,
+            capsuleColor: style.capsuleBackgroundColor,
+            panelColor: style.panel.backgroundColor,
+            shadow: style.panel.shadow
+        )
+
+        let state = YTSelectionMenuPanelState(
+            anchor: capsuleFrame,
+            isExpanded: false,
+            spec: spec,
+            rows: { expanded in
+                AnyView(self.rowsContent(isExpanded: expanded))
+            },
+            onDismissRequest: {
+                self.collapse()
+            }
+        )
+        let animation = shapeAnimation
+
+        // The layer grows on its own first frame, so the shape morphs out of the capsule rect
+        state.onAppear = {
+            withAnimation(animation) { state.isExpanded = true }
+        }
+
+        return state
     }
 
     private func select(_ item: Item) {
