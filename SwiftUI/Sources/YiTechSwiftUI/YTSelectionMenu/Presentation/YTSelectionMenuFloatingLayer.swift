@@ -24,7 +24,7 @@ struct YTSelectionMenuFloatingLayer: View {
 
             shape
 
-            state.rows(state.isExpanded)
+            state.rows(state.isExpanded, state.showsHighlighter)
                 .position(x: state.anchor.midX, y: state.anchor.midY)
                 .allowsHitTesting(state.isExpanded)
                 .accessibilityHidden(!state.isExpanded)

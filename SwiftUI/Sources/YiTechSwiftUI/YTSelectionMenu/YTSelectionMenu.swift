@@ -220,7 +220,7 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
                     .onTapGesture(perform: collapse)
                     .allowsHitTesting(isExpanded)
 
-                rowsContent(isExpanded: isExpanded)
+                rowsContent(isExpanded: isExpanded, showsHighlighter: showsHighlighter)
                     .allowsHitTesting(isExpanded)
                     .accessibilityHidden(!isExpanded)
             }
@@ -228,7 +228,7 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
         }
     }
 
-    private func rowsContent(isExpanded: Bool) -> some View {
+    private func rowsContent(isExpanded: Bool, showsHighlighter: Bool) -> some View {
         VStack(spacing: 2) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 YTSelectionMenuRow(
@@ -385,8 +385,8 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
             anchor: capsuleFrame,
             isExpanded: false,
             spec: spec,
-            rows: { expanded in
-                AnyView(self.rowsContent(isExpanded: expanded))
+            rows: { expanded, showsHighlighter in
+                AnyView(self.rowsContent(isExpanded: expanded, showsHighlighter: showsHighlighter))
             },
             onDismissRequest: {
                 self.collapse()
@@ -404,6 +404,7 @@ public struct YTSelectionMenu<Item: Identifiable & Hashable, Capsule: View, RowC
 
     private func select(_ item: Item) {
         showsHighlighter = false
+        floatingState?.showsHighlighter = false
         selection = item.id
         collapse()
     }

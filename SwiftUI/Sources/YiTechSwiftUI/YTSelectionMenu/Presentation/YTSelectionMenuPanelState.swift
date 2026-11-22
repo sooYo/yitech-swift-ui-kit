@@ -18,10 +18,13 @@ final class YTSelectionMenuPanelState: ObservableObject, @unchecked Sendable {
     /// Drives the shape morph and the per-row appearance, exactly like the in-place panel
     @Published var isExpanded: Bool
 
+    /// Hides the selected-row decoration while the panel closes after a selection
+    @Published var showsHighlighter = true
+
     let spec: YTSelectionMenuPanelSpec
 
     /// Builds the rows for the given expansion state; the layer only positions them
-    let rows: (Bool) -> AnyView
+    let rows: (Bool, Bool) -> AnyView
 
     /// Forwarded from the layer's dismiss area
     let onDismissRequest: () -> Void
@@ -33,7 +36,7 @@ final class YTSelectionMenuPanelState: ObservableObject, @unchecked Sendable {
         anchor: CGRect,
         isExpanded: Bool,
         spec: YTSelectionMenuPanelSpec,
-        rows: @escaping (Bool) -> AnyView,
+        rows: @escaping (Bool, Bool) -> AnyView,
         onDismissRequest: @escaping () -> Void
     ) {
         self.anchor = anchor
