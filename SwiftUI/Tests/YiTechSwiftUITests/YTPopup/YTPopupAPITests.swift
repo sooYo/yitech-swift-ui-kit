@@ -54,7 +54,10 @@ private struct PopupAPITestView: View {
                 isPresented: $showsCustomAlert,
                 message: "Message",
                 secondary: YTAlertAction(title: "Cancel", handler: {}),
-                primary: YTAlertAction(title: "Save", handler: {})
+                primary: YTAlertAction(title: "Save", handler: {}),
+                view: YTAlertPanelStyle { configuration in
+                    YTAlertView(configuration: configuration)
+                }
             ) {
                 Text("Content")
             }
@@ -64,7 +67,10 @@ private struct PopupAPITestView: View {
                 subtitle: YTSheetSubtitle(text: "Subtitle"),
                 message: "Message",
                 secondary: YTSheetAction("Cancel") {},
-                primary: YTSheetAction("Save") {}
+                primary: YTSheetAction("Save") {},
+                view: YTSheetPanelStyle { configuration in
+                    YTSheetView(configuration: configuration)
+                }
             ) {
                 Text("Content")
             }

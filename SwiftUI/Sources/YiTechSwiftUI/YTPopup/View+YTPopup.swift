@@ -27,6 +27,7 @@ public extension View {
         isDestructive: Bool = false,
         isDisabled: Bool = false,
         onConfirm: @escaping () -> Void = {},
+        view: YTAlertPanelStyle = .standard,
         options: YTPopupOptions = .init(dismissible: false)
     ) -> some View {
         modifier(YTPopupFlagModifier(isPresented: isPresented) { onDismiss in
@@ -39,6 +40,7 @@ public extension View {
                 isDestructive: isDestructive,
                 isDisabled: isDisabled,
                 onConfirm: onConfirm,
+                view: view,
                 options: owned(options),
                 onDismiss: onDismiss
             )
@@ -52,6 +54,7 @@ public extension View {
         message: String? = nil,
         secondary: YTAlertAction? = nil,
         primary: YTAlertAction,
+        view: YTAlertPanelStyle = .standard,
         options: YTPopupOptions = .init(dismissible: false),
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
@@ -61,6 +64,7 @@ public extension View {
                 message: message,
                 secondary: secondary,
                 primary: primary,
+                view: view,
                 options: owned(options),
                 onDismiss: onDismiss,
                 content: content
@@ -80,6 +84,7 @@ public extension View {
         message: String? = nil,
         secondary: YTSheetAction? = nil,
         primary: YTSheetAction? = nil,
+        view: YTSheetPanelStyle = .standard,
         options: YTPopupOptions = .init(),
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
@@ -91,6 +96,7 @@ public extension View {
                 secondary: secondary,
                 primary: primary,
                 onDismiss: onDismiss,
+                view: view,
                 options: owned(options)
             ) {
                 content()

@@ -59,6 +59,17 @@ public struct YTAlertView<Content: View>: View {
         self.content = content
     }
 
+    /// Creates an alert from a configuration supplied by the popup queue.
+    public init(configuration: YTAlertConfiguration) where Content == AnyView {
+        self.title = configuration.title
+        self.message = configuration.message
+        self.secondary = configuration.secondary
+        self.primary = configuration.primary
+        self.styleOverride = configuration.style
+        self.hasContent = configuration.hasContent
+        self.content = { configuration.content }
+    }
+
     public var body: some View {
         VStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 16) {

@@ -40,6 +40,18 @@ struct YTPopupPreviewScreen: View {
                     row("Custom alert · text field", systemImage: "square.and.pencil") {
                         showsCustomAlert = true
                     }
+
+                    row("Custom view · alert", systemImage: "sparkles") {
+                        YTPopup.alert(
+                            "Custom alert view",
+                            message: "The whole panel comes from the call site.",
+                            secondaryTitle: "Cancel",
+                            primaryTitle: "Continue",
+                            view: YTAlertPanelStyle { configuration in
+                                PreviewCustomAlertPanel(configuration: configuration)
+                            }
+                        )
+                    }
                 }
 
                 section("Sheet") {
@@ -57,6 +69,21 @@ struct YTPopupPreviewScreen: View {
 
                     row("Leading sheet · entry override", systemImage: "sidebar.left") {
                         showsLeadingSheet = true
+                    }
+
+                    row("Custom view · sheet", systemImage: "square.on.square") {
+                        YTPopup.sheet(
+                            title: "Custom sheet view",
+                            subtitle: YTSheetSubtitle(text: "Call-site chrome", dotColor: .purple),
+                            primary: YTSheetAction("Done") {},
+                            view: YTSheetPanelStyle { configuration in
+                                PreviewCustomSheetPanel(configuration: configuration)
+                            }
+                        ) {
+                            Text("Content still comes from the sheet call.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -335,6 +362,144 @@ private struct PreviewQueuedSheetContent: View {
 
             Text(index == 1 ? "First sheet in the queue." : "Second sheet in the queue.")
                 .font(.footnote)
+        }
+    }
+}
+
+// MARK: - Custom Panels
+
+private struct PreviewCustomAlertPanel: View {
+    let configuration: YTAlertConfiguration
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.orange)
+
+            VStack(spacing: 6) {
+                Text(configuration.title)
+                    .font(.system(size: configuration.style.titleFontSize, weight: .bold))
+                    .foregroundStyle(configuration.style.titleColor)
+
+                if let message = configuration.message {
+                    Text(message)
+                        .font(.system(size: configuration.style.messageFontSize))
+                        .foregroundStyle(configuration.style.messageColor)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
+            if configuration.hasContent {
+                configuration.content
+            }
+
+            VStack(spacing: 10) {
+                actionButton(configuration.primary, isSecondary: false)
+
+                if let secondary = configuration.secondary {
+                    actionButton(secondary, isSecondary: true)
+                }
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 320)
+        .background(
+            configuration.style.surface,
+            in: RoundedRectangle(cornerRadius: configuration.style.cornerRadius, style: .continuous)
+        )
+    }
+
+    private func actionButton(_ action: YTAlertAction, isSecondary: Bool) -> some View {
+        Button(action.title, action: action.handler)
+            .font(.system(size: configuration.style.actionFontSize, weight: .semibold))
+            .foregroundStyle(
+                isSecondary
+                    ? configuration.style.secondaryForeground
+                    : (action.isDestructive
+                        ? configuration.style.destructiveForeground
+                        : configuration.style.primaryForeground)
+            )
+            .frame(maxWidth: .infinity, minHeight: 46)
+            .background(
+                isSecondary
+                    ? configuration.style.secondarySurface
+                    : (action.isDestructive
+                        ? configuration.style.destructiveSurface
+                        : configuration.style.primarySurface),
+                in: RoundedRectangle(
+                    cornerRadius: configuration.style.actionCornerRadius,
+                    style: .continuous
+                )
+            )
+            .buttonStyle(.plain)
+            .disabled(action.isDisabled)
+            .opacity(action.isDisabled ? 0.45 : 1)
+    }
+}
+
+private struct PreviewCustomSheetPanel: View {
+    let configuration: YTSheetConfiguration
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(configuration.title)
+                        .font(.system(size: configuration.style.titleFontSize, weight: .bold))
+                        .foregroundStyle(configuration.style.titleColor)
+
+                    if let subtitle = configuration.subtitle {
+                        Text(subtitle.text)
+                            .font(.system(size: configuration.style.subtitleFontSize))
+                            .foregroundStyle(configuration.style.subtitleColor)
+                    }
+
+                    if let message = configuration.message {
+                        Text(message)
+                            .font(.system(size: configuration.style.messageFontSize))
+                            .foregroundStyle(configuration.style.messageColor)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: configuration.dismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(configuration.style.iconColor)
+                        .frame(width: 32, height: 32)
+                        .background(configuration.style.cardSurface, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            configuration.content
+
+            HStack(spacing: 10) {
+                if let secondary = configuration.secondary {
+                    Button(secondary.title, action: secondary.action)
+                        .buttonStyle(.bordered)
+                        .disabled(!secondary.isEnabled)
+                }
+
+                if let primary = configuration.primary {
+                    Button(primary.title, action: primary.action)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!primary.isEnabled)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(20)
+        .frame(maxWidth: 460)
+        .background {
+            UnevenRoundedRectangle(
+                topLeadingRadius: configuration.style.cornerRadius,
+                topTrailingRadius: configuration.style.cornerRadius
+            )
+            .fill(configuration.style.surface)
+            .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 }

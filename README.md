@@ -235,6 +235,38 @@ Or attach a modifier to a view. The binding is written back to `false` when the 
 
 `YTAlertView` and `YTSheetView` are the standard panels. Both accept a content slot and an optional style override. Use `YTPopup.alert(... content:)` or `YTPopup.sheet(...)` for custom content that keeps the standard chrome.
 
+### Custom alert and sheet UI
+
+Any single alert or sheet can draw its own complete panel. Pass `view:` with a `YTAlertPanelStyle` or `YTSheetPanelStyle`; omitting it keeps the standard `YTAlertView` / `YTSheetView`:
+
+```swift
+YTPopup.alert(
+    "Delete palette?",
+    message: "This action cannot be undone.",
+    secondaryTitle: "Cancel",
+    primaryTitle: "Delete",
+    isDestructive: true,
+    onConfirm: deletePalette,
+    view: YTAlertPanelStyle { configuration in
+        DestructiveAlertPanel(configuration: configuration)
+    }
+)
+
+ExportView()
+    .ytSheet(
+        isPresented: $showsExport,
+        title: "Export",
+        primary: YTSheetAction("Start") { export() },
+        view: YTSheetPanelStyle { configuration in
+            CompactSheetPanel(configuration: configuration)
+        }
+    ) {
+        ExportOptions()
+    }
+```
+
+The alert builder receives a `YTAlertConfiguration`: the resolved `style` tokens, `title`, `message`, the already-wired `secondary` and `primary` actions (their handlers close the alert before running), `hasContent` with `content` for the content slot, and `dismiss` for extra close controls. The sheet builder receives a `YTSheetConfiguration` with `subtitle` and the footer actions instead. A panel owns its background, insets, and accessibility; the queue still owns the scrim, the transitions, and the dismissal callbacks. `YTAlertView(configuration:)` and `YTSheetView(configuration:)` keep the standard chrome inside a custom panel.
+
 ## Development
 
 ```bash

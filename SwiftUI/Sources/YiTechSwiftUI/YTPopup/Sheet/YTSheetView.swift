@@ -57,6 +57,21 @@ public struct YTSheetView<Content: View>: View {
         self.content = content
     }
 
+    /// Creates a sheet from a configuration supplied by the popup queue.
+    public init(configuration: YTSheetConfiguration) where Content == AnyView {
+        self.title = configuration.title
+        self.subtitle = configuration.subtitle
+        self.message = configuration.message
+        self.onBack = nil
+        self.onClose = configuration.dismiss
+        self.secondary = configuration.secondary
+        self.primary = configuration.primary
+        self.styleOverride = configuration.style
+        self.backAccessibilityLabel = "Back"
+        self.closeAccessibilityLabel = "Close"
+        self.content = { configuration.content }
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             Capsule()

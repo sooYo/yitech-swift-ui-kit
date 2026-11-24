@@ -13,7 +13,8 @@ public extension YTPopup {
     /// Presents a standard bottom sheet.
     ///
     /// Footer buttons do not close the sheet by themselves, so a button can keep
-    /// the sheet open while it presents an alert or changes page.
+    /// the sheet open while it presents an alert or changes page. Pass `view` to
+    /// replace the whole sheet UI for this sheet.
     @discardableResult
     static func sheet<Content: View>(
         title: String,
@@ -22,13 +23,19 @@ public extension YTPopup {
         secondary: YTSheetAction? = nil,
         primary: YTSheetAction? = nil,
         onDismiss: (() -> Void)? = nil,
+        view: YTSheetPanelStyle = .standard,
         options: YTPopupOptions = .init(),
         @ViewBuilder content: @escaping () -> Content
     ) -> YTPopupHandle {
         let id = UUID()
 
         let payload = YTPopupRequest.Payload(
-            value: (secondary: secondary, primary: primary, content: content)
+            value: (
+                secondary: secondary,
+                primary: primary,
+                view: view,
+                content: content
+            )
         )
 
         enqueue(
@@ -40,19 +47,17 @@ public extension YTPopup {
                     let payload = payload.value
 
                     return AnyView(
-                        YTSheetView(
+                        YTSheetPanelHost(
                             title: title,
                             subtitle: subtitle,
                             message: message,
-                            onClose: {
-                                YTPopup.dismiss(id)
-                            },
                             secondary: payload.secondary,
                             primary: payload.primary,
-                            style: sheetStyle(in: options)
-                        ) {
-                            payload.content()
-                        }
+                            content: { AnyView(payload.content()) },
+                            styleOverride: sheetStyle(in: options),
+                            view: payload.view,
+                            dismiss: { YTPopup.dismiss(id) }
+                        )
                     )
                 },
                 onDismiss: onDismiss

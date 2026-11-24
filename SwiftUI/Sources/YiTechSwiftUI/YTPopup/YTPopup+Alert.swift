@@ -21,7 +21,8 @@ public extension YTPopup {
     /// Presents an alert with a title, optional message, and one or two actions.
     ///
     /// The alert closes before either action runs. An alert is not scrim
-    /// dismissible by default; pass `options` to change that.
+    /// dismissible by default; pass `options` to change that. Pass `view` to
+    /// replace the whole panel UI for this alert.
     @discardableResult
     static func alert(
         _ title: String,
@@ -32,6 +33,7 @@ public extension YTPopup {
         isDestructive: Bool = false,
         isDisabled: Bool = false,
         onConfirm: @escaping () -> Void = {},
+        view: YTAlertPanelStyle = .standard,
         options: YTPopupOptions = .init(dismissible: false),
         onDismiss: (() -> Void)? = nil
     ) -> YTPopupHandle {
@@ -57,7 +59,9 @@ public extension YTPopup {
             onConfirm()
         }
 
-        let actions = YTPopupRequest.Payload(value: (secondary: secondary, primary: primary))
+        let payload = YTPopupRequest.Payload(
+            value: (secondary: secondary, primary: primary, view: view)
+        )
 
         enqueue(
             YTPopupRequest(
@@ -65,15 +69,19 @@ public extension YTPopup {
                 kind: .alert,
                 options: options,
                 makeContent: {
-                    let actions = actions.value
+                    let payload = payload.value
 
                     return AnyView(
-                        YTAlertView(
+                        YTAlertPanelHost(
                             title: title,
                             message: message,
-                            secondary: actions.secondary,
-                            primary: actions.primary,
-                            style: alertStyle(in: options)
+                            secondary: payload.secondary,
+                            primary: payload.primary,
+                            hasContent: false,
+                            content: { AnyView(EmptyView()) },
+                            styleOverride: alertStyle(in: options),
+                            view: payload.view,
+                            dismiss: { YTPopup.dismiss(id) }
                         )
                     )
                 },
@@ -87,13 +95,15 @@ public extension YTPopup {
     /// Presents an alert with a custom content slot.
     ///
     /// The title and buttons still come from the standard alert chrome. The
-    /// alert closes before either action runs.
+    /// alert closes before either action runs. Pass `view` to replace the whole
+    /// panel UI; the slot is then available as `configuration.content`.
     @discardableResult
     static func alert<Content: View>(
         _ title: String,
         message: String? = nil,
         secondary: YTAlertAction? = nil,
         primary: YTAlertAction,
+        view: YTAlertPanelStyle = .standard,
         options: YTPopupOptions = .init(dismissible: false),
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
@@ -129,7 +139,12 @@ public extension YTPopup {
         }
 
         let payload = YTPopupRequest.Payload(
-            value: (secondary: wrappedSecondary, primary: wrappedPrimary, content: content)
+            value: (
+                secondary: wrappedSecondary,
+                primary: wrappedPrimary,
+                view: view,
+                content: content
+            )
         )
 
         enqueue(
@@ -141,13 +156,16 @@ public extension YTPopup {
                     let payload = payload.value
 
                     return AnyView(
-                        YTAlertView(
+                        YTAlertPanelHost(
                             title: title,
                             message: message,
                             secondary: payload.secondary,
                             primary: payload.primary,
-                            style: alertStyle(in: options),
-                            content: payload.content
+                            hasContent: true,
+                            content: { AnyView(payload.content()) },
+                            styleOverride: alertStyle(in: options),
+                            view: payload.view,
+                            dismiss: { YTPopup.dismiss(id) }
                         )
                     )
                 },
