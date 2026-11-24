@@ -180,6 +180,61 @@ The playback button has priority over the interaction delay. Manually pausing pl
 
 SwiftUI previews run in an Xcode app target or preview host. SPM distributes and compiles the SwiftUI source, but does not provide a standalone preview canvas.
 
+## Popups
+
+`YTPopup` presents alerts and bottom sheets from one queue. Install the host once on the root view, above tabs and navigation containers, and inject the app's appearance there:
+
+```swift
+AppRootView()
+    .yPopupHost(alertStyle: .app, sheetStyle: .app)
+```
+
+The library contains no brand colors. `YTAlertStyle` and `YTSheetStyle` are value types; define `.app` in the app and pass it to the host, or override one popup with `options: .init(style: .alert(.app))`.
+
+Queue behavior: one sheet is visible at a time and additional sheets wait in FIFO order; alerts stack above the visible sheet; closing a sheet also closes the alerts above it; a modifier's popup is cancelled when its owner disappears; identical `key` values are ignored while the first request is still queued or visible; requests made before a host exists are queued and flushed when the host appears.
+
+Pass `entry` in `YTPopupOptions` to override the content direction (`.bottom`, `.top`, `.leading`, `.trailing`, `.scale`, `.fade`). Directional entries slide without a fade; `.automatic` keeps the sheet-bottom and alert-scale defaults.
+
+Present directly when no view state is needed:
+
+```swift
+YTPopup.alert(
+    "Delete category?",
+    message: "This cannot be undone.",
+    secondaryTitle: "Cancel",
+    primaryTitle: "Delete",
+    isDestructive: true,
+    onConfirm: delete
+)
+
+let sheet = YTPopup.sheet(
+    title: "Export",
+    primary: YTSheetAction("Start") { export() }
+) {
+    ExportOptions()
+}
+
+sheet.dismiss()
+```
+
+Or attach a modifier to a view. The binding is written back to `false` when the popup closes from inside:
+
+```swift
+.ytAlert("Saved", isPresented: $showsSaved, message: "Your changes are live.", primaryTitle: "OK")
+
+.ytSheet(isPresented: $showsExport) { dismiss in
+    YTSheetView(title: "Export", onClose: dismiss) {
+        ExportOptions()
+    }
+}
+
+.ytSheet(item: $editorTarget) { target, dismiss in
+    EditorSheet(target: target, onDismiss: dismiss)
+}
+```
+
+`YTAlertView` and `YTSheetView` are the standard panels. Both accept a content slot and an optional style override. Use `YTPopup.alert(... content:)` or `YTPopup.sheet(...)` for custom content that keeps the standard chrome.
+
 ## Development
 
 ```bash

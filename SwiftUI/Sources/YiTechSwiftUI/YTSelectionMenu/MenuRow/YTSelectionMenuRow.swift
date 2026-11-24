@@ -40,7 +40,7 @@ struct YTSelectionMenuRow<Content: View>: View {
                         .foregroundStyle(.primary)
                         .frame(width: 12, height: 12)
                         .frame(width: 22, height: 22)
-                        .background(.regularMaterial, in: Circle())
+                        .background(highlighterBackground, in: Circle())
                         .opacity(isSelected && showsHighlighter ? 1 : 0)
                         .padding(.trailing, 10)
                         .transaction { $0.animation = nil }
@@ -51,6 +51,14 @@ struct YTSelectionMenuRow<Content: View>: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var highlighterBackground: AnyShapeStyle {
+        if #available(watchOS 10, *) {
+            AnyShapeStyle(.regularMaterial)
+        } else {
+            AnyShapeStyle(.black.opacity(0.3))
+        }
     }
 }
 

@@ -324,7 +324,7 @@ public extension View {
 
 // MARK: - Preview
 
-#if DEBUG
+#if DEBUG && !os(watchOS)
 
 struct DemoView: View {
     @State private var showCenter = false
