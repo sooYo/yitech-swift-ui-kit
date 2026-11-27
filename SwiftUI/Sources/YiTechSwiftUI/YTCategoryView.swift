@@ -408,20 +408,20 @@ private struct YTCategoryViewPreview: View {
     private let items = [
         YTCategoryViewPreviewItem(
             id: "palette",
-            name: "配色",
+            name: "Palettes",
             children: [
                 YTCategoryViewPreviewItem(
                     id: "warm",
-                    name: "暖色",
+                    name: "Warm",
                     children: [
-                        YTCategoryViewPreviewItem(id: "coral", name: "珊瑚", children: []),
-                        YTCategoryViewPreviewItem(id: "amber", name: "琥珀", children: [])
+                        YTCategoryViewPreviewItem(id: "coral", name: "Coral", children: []),
+                        YTCategoryViewPreviewItem(id: "amber", name: "Amber", children: [])
                     ]
                 ),
-                YTCategoryViewPreviewItem(id: "cool", name: "冷色", children: [])
+                YTCategoryViewPreviewItem(id: "cool", name: "Cool", children: [])
             ]
         ),
-        YTCategoryViewPreviewItem(id: "material", name: "材质", children: [])
+        YTCategoryViewPreviewItem(id: "material", name: "Materials", children: [])
     ]
 
     var body: some View {

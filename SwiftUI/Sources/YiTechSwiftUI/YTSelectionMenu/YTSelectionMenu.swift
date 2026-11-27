@@ -432,10 +432,10 @@ private struct YTSelectionMenuPreview: View {
     private let style: YTSelectionMenuStyle
 
     private let items = [
-        YTSelectionMenuPreviewItem(id: "all", name: "全部"),
-        YTSelectionMenuPreviewItem(id: "warm", name: "暖色调"),
-        YTSelectionMenuPreviewItem(id: "cool", name: "冷色调"),
-        YTSelectionMenuPreviewItem(id: "neutral", name: "中性色")
+        YTSelectionMenuPreviewItem(id: "all", name: "All"),
+        YTSelectionMenuPreviewItem(id: "warm", name: "Warm tones"),
+        YTSelectionMenuPreviewItem(id: "cool", name: "Cool tones"),
+        YTSelectionMenuPreviewItem(id: "neutral", name: "Neutrals")
     ]
 
     init(selection: String? = nil, style: YTSelectionMenuStyle = .init()) {
@@ -447,17 +447,17 @@ private struct YTSelectionMenuPreview: View {
         YTSelectionMenu(
             items: items,
             selection: $selection,
-            placeholder: "选择颜色",
+            placeholder: "Select a color",
             style: style
         ) { $0.name }
     }
 }
 
-#Preview("未选择") {
+#Preview("Unselected") {
     YTSelectionMenuPreview()
 }
 
-#Preview("关闭高亮") {
+#Preview("Highlight Hidden") {
     YTSelectionMenuPreview(
         selection: "warm",
         style: .init(highlighter: .init(isVisible: false))
@@ -485,16 +485,16 @@ private struct YTSelectionMenuCustomPreview: View {
     @State private var selection: String?
 
     private let items = [
-        YTSelectionMenuPreviewItem(id: "all", name: "全部"),
-        YTSelectionMenuPreviewItem(id: "warm", name: "暖色调"),
-        YTSelectionMenuPreviewItem(id: "cool", name: "冷色调")
+        YTSelectionMenuPreviewItem(id: "all", name: "All"),
+        YTSelectionMenuPreviewItem(id: "warm", name: "Warm tones"),
+        YTSelectionMenuPreviewItem(id: "cool", name: "Cool tones")
     ]
 
     var body: some View {
         YTSelectionMenu(
             items: items,
             selection: $selection,
-            placeholder: "选择颜色",
+            placeholder: "Select a color",
             style: .init(
                 panel: .init(
                     backgroundColor: Color(red: 0.92, green: 0.95, blue: 0.93),
@@ -527,7 +527,7 @@ private struct YTSelectionMenuCustomPreview: View {
     }
 }
 
-#Preview("自定义 Capsule") {
+#Preview("Custom Capsule") {
     YTSelectionMenuCustomPreview()
 }
 
@@ -559,9 +559,9 @@ private struct YTSelectionMenuTriggerPreview: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            settingsRow(symbol: "waveform", title: "触感反馈", detail: "点按时提供触感反馈", value: "开启")
+            settingsRow(symbol: "waveform", title: "Haptic Feedback", detail: "Provide haptic feedback on tap", value: "On")
             Divider().padding(.leading, 60)
-            settingsRow(symbol: "textformat.abc", title: "显示颜色名称和值", detail: "空间允许时显示颜色信息", value: "开启")
+            settingsRow(symbol: "textformat.abc", title: "Show Color Names and Values", detail: "Show color details when space allows", value: "On")
             Divider().padding(.leading, 60)
 
             YTSelectionMenu(
@@ -577,8 +577,8 @@ private struct YTSelectionMenuTriggerPreview: View {
                     Button(action: context.open) {
                         settingsRow(
                             symbol: "number",
-                            title: "默认颜色值格式",
-                            detail: "用于收藏列表中的颜色值",
+                            title: "Default Color Format",
+                            detail: "Used for colors in your collection",
                             value: context.title
                         )
                     }
@@ -590,7 +590,7 @@ private struct YTSelectionMenuTriggerPreview: View {
             )
 
             Divider().padding(.leading, 60)
-            settingsRow(symbol: "sparkles", title: "相似推荐", detail: "根据收藏推荐相近配色", value: "即将开放")
+            settingsRow(symbol: "sparkles", title: "Similar Colors", detail: "Find colors related to your collection", value: "Coming Soon")
         }
         .frame(width: 320)
         .background(Color(red: 0.94, green: 0.94, blue: 0.93), in: RoundedRectangle(cornerRadius: 16))
@@ -628,11 +628,11 @@ private struct YTSelectionMenuTriggerPreview: View {
     }
 }
 
-#Preview("设置行 · 收起") {
+#Preview("Settings Row · Collapsed") {
     YTSelectionMenuTriggerPreview(opensOnAppear: false)
 }
 
-#Preview("设置行 · 展开") {
+#Preview("Settings Row · Expanded") {
     YTSelectionMenuTriggerPreview(opensOnAppear: true)
 }
 
@@ -640,9 +640,9 @@ private struct YTSelectionMenuExpandedPreview: View {
     @State private var selection: String? = "warm"
 
     private let items = [
-        YTSelectionMenuPreviewItem(id: "all", name: "全部"),
-        YTSelectionMenuPreviewItem(id: "warm", name: "暖色调"),
-        YTSelectionMenuPreviewItem(id: "cool", name: "冷色调")
+        YTSelectionMenuPreviewItem(id: "all", name: "All"),
+        YTSelectionMenuPreviewItem(id: "warm", name: "Warm tones"),
+        YTSelectionMenuPreviewItem(id: "cool", name: "Cool tones")
     ]
 
     var body: some View {
@@ -662,12 +662,12 @@ private struct YTSelectionMenuExpandedPreview: View {
     }
 }
 
-#Preview("展开 · 亮色") {
+#Preview("Expanded · Light") {
     YTSelectionMenuExpandedPreview()
         .preferredColorScheme(.light)
 }
 
-#Preview("展开 · 深色") {
+#Preview("Expanded · Dark") {
     YTSelectionMenuExpandedPreview()
         .preferredColorScheme(.dark)
 }

@@ -340,11 +340,11 @@ struct DemoView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Button("居中弹窗") { showCenter = true }
-                Button("底部卡片") { showBottom = true }
-                Button("顶部提示") { showTop = true }
-                Button("Item 驱动弹窗") {
-                    alertItem = AlertModel(title: "确认删除？")
+                Button("Alert") { showCenter = true }
+                Button("BottomSheet") { showBottom = true }
+                Button("Banner") { showTop = true }
+                Button("Item State") {
+                    alertItem = AlertModel(title: "Delete this item?")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -357,9 +357,9 @@ struct DemoView: View {
             blurRadius: 4
         ) {
             VStack(spacing: 16) {
-                Text("标题").font(.headline)
-                Text("这是一个居中弹窗").foregroundStyle(.secondary)
-                Button("关闭") { showCenter = false }
+                Text("Title").font(.headline)
+                Text("This is an alert").foregroundStyle(.secondary)
+                Button("Close") { showCenter = false }
                     .buttonStyle(.borderedProminent)
             }
             .padding(24)
@@ -377,9 +377,9 @@ struct DemoView: View {
                 Capsule()
                     .fill(.secondary)
                     .frame(width: 40, height: 4)
-                Text("底部卡片").font(.headline)
-                Text("从底部滑入的弹窗").foregroundStyle(.secondary)
-                Button("关闭") { showBottom = false }
+                Text("Bottom Sheet").font(.headline)
+                Text("A popup that slides up from the bottom").foregroundStyle(.secondary)
+                Button("Close") { showBottom = false }
                     .buttonStyle(.borderedProminent)
             }
             .padding(24)
@@ -397,7 +397,7 @@ struct DemoView: View {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("操作成功")
+                Text("Action completed")
                 Spacer()
             }
             .padding()
@@ -407,11 +407,11 @@ struct DemoView: View {
         .popupYT(item: $alertItem, alignment: .center, blurRadius: 4) { model in
             VStack(spacing: 16) {
                 Text(model.title).font(.headline)
-                Text("删除后不可恢复").foregroundStyle(.secondary)
+                Text("This action cannot be undone").foregroundStyle(.secondary)
                 HStack {
-                    Button("取消") { alertItem = nil }
+                    Button("Cancel") { alertItem = nil }
                         .buttonStyle(.bordered)
-                    Button("确定") { alertItem = nil }
+                    Button("Delete") { alertItem = nil }
                         .buttonStyle(.borderedProminent)
                 }
             }

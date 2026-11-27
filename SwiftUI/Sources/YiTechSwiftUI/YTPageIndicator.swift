@@ -439,6 +439,5 @@ public struct YTPageIndicator<Indicator: View>: View {
         )
     }
     .padding(24)
-    .background(Color.black)
     .preferredColorScheme(.dark)
 }
