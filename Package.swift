@@ -1,3 +1,6 @@
+//  Package.swift
+//  YiTechUI
+//
 //  Created by Sooyo on 2026-10-10.
 //  Copyright (c) 2026 Yi Tech Studio. All rights reserved.
 
@@ -22,7 +25,9 @@ let package = Package(
     targets: [
         .target(
             name: "YiTechSwiftUI",
-            path: "SwiftUI/Sources/YiTechSwiftUI"
+            path: ".",
+            exclude: ["README-assets", "README.md", "SwiftUI/Tests"],
+            sources: ["SwiftUI/Sources/YiTechSwiftUI"]
         ),
         .testTarget(
             name: "YiTechSwiftUITests",
